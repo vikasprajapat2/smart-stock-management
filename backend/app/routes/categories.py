@@ -4,7 +4,8 @@ from typing import List
 
 from app.database import get_db
 from app.models.category import Category
-from app.schemas.category_schema import CategoryCreate, CategoryResponse
+from app.schemas.category_schema import CategoryCreate, CategoryUpdate, CategoryResponse
+from app.models.product import Product
 
 router = APIRouter(
     prefix="/categories",
@@ -32,3 +33,62 @@ def create_category(category_in: CategoryCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=List[CategoryResponse])
 def get_categories(db: Session = Depends(get_db)):
     return db.query(Category).all()
+
+@router.get("/{id}", response_model=CategoryResponse)
+def get_category(id: int, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == id).first()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with id {id} not found."
+        )
+    return category
+
+@router.put("/{id}", response_model=CategoryResponse)
+def update_category(id: int, category_in: CategoryUpdate, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == id).first()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with id {id} not found."
+        )
+    
+    # Check uniqueness of name if updated
+    if category_in.category_name is not None and category_in.category_name != category.category_name:
+        existing = db.query(Category).filter(Category.category_name == category_in.category_name).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category with name '{category_in.category_name}' already exists."
+            )
+            
+    # Update fields
+    update_data = category_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(category, key, value)
+        
+    db.commit()
+    db.refresh(category)
+    return category
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(id: int, db: Session = Depends(get_db)):
+    category = db.query(Category).filter(Category.id == id).first()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category with id {id} not found."
+        )
+        
+    # Check if category has associated products
+    product_exists = db.query(Product).filter(Product.category_id == id).first()
+    if product_exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete category with associated products."
+        )
+        
+    db.delete(category)
+    db.commit()
+    return None
+
