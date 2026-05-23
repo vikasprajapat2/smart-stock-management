@@ -15,5 +15,5 @@ class Supplier(Base):
     address = Column(String(255))
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-
     purchase_orders = relationship("PurchaseOrder", back_populates="supplier")
+
