@@ -12,6 +12,7 @@ from app.schemas.inventory_schema import (
     InventoryCreate,
     InventoryResponse
 )
+from app.utils.auth_middleware import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +129,8 @@ def create_inventory(
 # GET ALL INVENTORY
 @router.get("/")
 def get_inventory(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
 
     inventory = db.query(Inventory).all()
