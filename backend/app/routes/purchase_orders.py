@@ -187,12 +187,12 @@ def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Dep
             ).first()
             
             if inventory_record:
-                inventory_record.quantity_available += item.quantity
+                inventory_record.quantity += item.quantity
             else:
                 new_inventory = Inventory(
                     product_id=item.product_id,
                     warehouse_id=effective_warehouse_id,
-                    quantity_available=item.quantity,
+                    quantity=item.quantity,
                     quantity_reserved=0
                 )
                 db.add(new_inventory)

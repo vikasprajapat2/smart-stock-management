@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 def get_product_stock(db: Session, product_id: int) -> int:
-    qty = db.query(func.sum(Inventory.quantity_available)).filter(Inventory.product_id == product_id).scalar()
+    qty = db.query(func.sum(Inventory.quantity)).filter(Inventory.product_id == product_id).scalar()
     return qty if qty is not None else 0
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)

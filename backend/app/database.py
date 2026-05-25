@@ -11,7 +11,7 @@ import os
 load_dotenv()
 
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 
 
 engine = create_engine(DATABASE_URL)
@@ -25,3 +25,10 @@ SessionLocal = sessionmaker(
 
 
 Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
