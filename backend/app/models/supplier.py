@@ -13,6 +13,7 @@ class Supplier(Base):
     email = Column(String(100))
     phone = Column(String(20))
     address = Column(String(255))
+    gst_number = Column(String(15), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     purchase_orders = relationship("PurchaseOrder", back_populates="supplier")

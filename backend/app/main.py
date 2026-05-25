@@ -24,6 +24,8 @@ from app.models import (
     notification
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # Auto-create tables in development database
 Base.metadata.create_all(bind=engine)
 
@@ -31,6 +33,14 @@ app = FastAPI(
     title="Smart Stock Management API",
     description="Backend API for BOM-based stock and inventory management",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get('/')
