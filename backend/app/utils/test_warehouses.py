@@ -31,12 +31,24 @@ def is_port_open(ip, port):
 def setup_db():
     db = SessionLocal()
     try:
-        # Clean up existing test warehouses
-        db.query(Inventory).delete()
-        db.query(Product).delete()
-        db.query(Category).delete()
-        db.query(Warehouse).filter(Warehouse.warehouse_name.like("Test %")).delete()
-        db.query(User).filter(User.full_name == "Warehouse Manager").delete()
+        # 1. Clean up test inventory and test product if any exists
+        test_product = db.query(Product).filter(Product.sku == "TEST-SKU-123").first()
+        if test_product:
+            db.query(Inventory).filter(Inventory.product_id == test_product.id).delete()
+            db.query(Product).filter(Product.id == test_product.id).delete()
+
+        # 2. Clean up test category
+        db.query(Category).filter(Category.category_name == "Test Category").delete()
+
+        # 3. Clean up test warehouses
+        db.query(Warehouse).filter(Warehouse.warehouse_name.like("Test Warehouse Alpha%")).delete()
+
+        # 4. Clean up test manager/user
+        test_user = db.query(User).filter(User.email == "manager@warehouse.com").first()
+        if test_user:
+            db.query(User).filter(User.id == test_user.id).delete()
+
+        # 5. Clean up test role
         db.query(Role).filter(Role.role_name == "Manager").delete()
         db.commit()
 
@@ -58,6 +70,10 @@ def setup_db():
         db.refresh(user)
 
         return user.id
+    except Exception as e:
+        db.rollback()
+        print("Setup DB Error:", e)
+        raise
     finally:
         db.close()
 
