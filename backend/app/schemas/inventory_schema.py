@@ -15,8 +15,7 @@ class InventoryResponse(BaseModel):
     id: int
     product_id: int
     warehouse_id: int
-    # Database column is `quantity`, but serialize as `quantity_available`
-    quantity_available: int = Field(..., alias="quantity")
+    quantity: int
     quantity_reserved: int
 
     model_config = ConfigDict(from_attributes=True)
