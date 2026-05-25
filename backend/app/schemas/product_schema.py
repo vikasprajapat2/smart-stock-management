@@ -35,3 +35,21 @@ class ProductResponse(ProductBase):
 
     class Config:
         from_attributes = True
+
+
+class ProductScanRequest(BaseModel):
+    barcode: str
+    action: str  # "IN" or "OUT"
+    warehouse_id: int
+    quantity: Optional[int] = 1
+
+
+class ProductScanResponse(BaseModel):
+    product_name: str
+    sku: str
+    barcode: str
+    warehouse_id: int
+    quantity_available: int
+    action: str
+    message: str
+
