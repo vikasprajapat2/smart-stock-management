@@ -20,14 +20,14 @@ def get_current_user(
         user_id = payload.get("user_id")
 
         if user_id is None:
-            raise HTTPExecption(
+            raise HTTPException(
                 status_code=401,
                 detail = "Invalid token"
             )
         return payload
     except JWTError:
 
-        raise HTTPExecption(
+          raise HTTPException(
             status_code=401,
             detail='Could not validate token'
         )

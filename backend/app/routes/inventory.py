@@ -175,6 +175,21 @@ def update_inventory(
     inventory.quantity = updated_data.quantity_available
 
     inventory.quantity_reserved = updated_data.quantity_reserved
+   
+    product = db.query(Product).filter(
+        Product.id == inventory.product_id
+    ).first()
+
+    if inventory.quantity <= product.reorder_level:
+
+        notification = Notification(
+            title="Low Stock Alert",
+            message=f"{product.product_name} stock is low",
+            type="warning"
+        )
+
+        db.add(notification)
+
 
     try:
 

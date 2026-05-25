@@ -12,6 +12,7 @@ from app.models.warehouse import Warehouse
 from app.models.inventory import Inventory
 from app.schemas.purchase_order_schema import PurchaseOrderCreate, PurchaseOrderUpdate, PurchaseOrderResponse
 from app.utils.product_helpers import generate_po_number
+from app.models.inventory import Inventory
 
 router = APIRouter(
     prefix="/purchase-orders",
@@ -170,7 +171,7 @@ def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Dep
         setattr(po, key, value)
         
     # Check if we are transitioning to COMPLETED
-    if po.status == "APPROVED" and old_status != "APPROVED":
+    if po.status == "COMPLETED" and old_status != "COMPLETED":
         # Must have warehouse_id to update inventory
         effective_warehouse_id = po_in.warehouse_id if po_in.warehouse_id is not None else po.warehouse_id
         if effective_warehouse_id is None:
@@ -215,7 +216,7 @@ def delete_purchase_order(id: int, db: Session = Depends(get_db)):
             detail=f"Purchase order with id {id} not found."
         )
         
-    if po.status == "APPROVED":
+    if po.status == "COMPLETED":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete a COMPLETED purchase order."
