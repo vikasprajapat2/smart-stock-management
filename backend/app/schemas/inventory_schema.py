@@ -1,13 +1,23 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
+
 
 class InventoryCreate(BaseModel):
     product_id: int
     warehouse_id: int
-    quantity_available: int
+    # accept `quantity` in request payload and map it to `quantity_available`
+    quantity_available: int = Field(..., alias="quantity")
     quantity_reserved: int = 0
 
-class InventoryResponse(InventoryCreate):
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class InventoryResponse(BaseModel):
     id: int
-    class Config:
-        from_attributes = True
+    product_id: int
+    warehouse_id: int
+    # Database column is `quantity`, but serialize as `quantity_available`
+    quantity_available: int = Field(..., alias="quantity")
+    quantity_reserved: int
+
+    model_config = ConfigDict(from_attributes=True)
         
