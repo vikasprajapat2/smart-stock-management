@@ -8,6 +8,7 @@ class SupplierBase(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    gst_number: Optional[str] = None
     is_active: Optional[bool] = True
 
 class SupplierCreate(SupplierBase):
@@ -19,6 +20,7 @@ class SupplierUpdate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    gst_number: Optional[str] = None
     is_active: Optional[bool] = None
 
 class SupplierResponse(SupplierBase):

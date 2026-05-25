@@ -170,7 +170,7 @@ def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Dep
         setattr(po, key, value)
         
     # Check if we are transitioning to COMPLETED
-    if po.status == "COMPLETED" and old_status != "COMPLETED":
+    if po.status == "APPROVED" and old_status != "APPROVED":
         # Must have warehouse_id to update inventory
         effective_warehouse_id = po_in.warehouse_id if po_in.warehouse_id is not None else po.warehouse_id
         if effective_warehouse_id is None:
@@ -187,12 +187,12 @@ def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Dep
             ).first()
             
             if inventory_record:
-                inventory_record.quantity_available += item.quantity
+                inventory_record.quantity += item.quantity
             else:
                 new_inventory = Inventory(
                     product_id=item.product_id,
                     warehouse_id=effective_warehouse_id,
-                    quantity_available=item.quantity,
+                    quantity=item.quantity,
                     quantity_reserved=0
                 )
                 db.add(new_inventory)
@@ -215,7 +215,7 @@ def delete_purchase_order(id: int, db: Session = Depends(get_db)):
             detail=f"Purchase order with id {id} not found."
         )
         
-    if po.status == "COMPLETED":
+    if po.status == "APPROVED":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete a COMPLETED purchase order."

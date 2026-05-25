@@ -5,6 +5,9 @@ from app.routes.categories import router as category_router
 from app.routes.products import router as product_router
 from app.routes.suppliers import router as supplier_router
 from app.routes.purchase_orders import router as purchase_order_router
+from app.routes.inventory import router as inventory_router
+from app.routes.order import router as order_router
+from app.routes.warehouses import router as warehouse_router
 
 # Import all models to ensure they are registered on the metadata
 from app.models import (
@@ -15,8 +18,13 @@ from app.models import (
     inventory,
     warehouse,
     supplier,
-    purchase_order
+    purchase_order,
+    order,
+    order_item,
+    notification
 )
+
+from fastapi.middleware.cors import CORSMiddleware
 
 # Auto-create tables in development database
 Base.metadata.create_all(bind=engine)
@@ -27,13 +35,23 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get('/')
 def home():
     return {'message': 'Smart Stock Management API Running'}
 
-# Include API routers
 app.include_router(auth_router)
 app.include_router(category_router)
 app.include_router(product_router)
 app.include_router(supplier_router)
 app.include_router(purchase_order_router)
+app.include_router(inventory_router)
+app.include_router(order_router)
+app.include_router(warehouse_router)
