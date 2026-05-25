@@ -18,3 +18,10 @@ def generate_sku(product_name: str, category_name: Optional[str] = None) -> str:
 def generate_barcode() -> str:
     # Generate a random 12-digit barcode string (like UPC-A)
     return ''.join(random.choices(string.digits, k=12))
+
+def generate_po_number() -> str:
+    import datetime
+    date_str = datetime.datetime.now().strftime("%Y%m%d")
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    return f"PO-{date_str}-{random_str}"
+

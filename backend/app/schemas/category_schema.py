@@ -8,8 +8,13 @@ class CategoryBase(BaseModel):
 class CategoryCreate(CategoryBase):
     pass
 
+class CategoryUpdate(BaseModel):
+    category_name: Optional[str] = None
+    description: Optional[str] = None
+
 class CategoryResponse(CategoryBase):
     id: int
 
     class Config:
         from_attributes = True
+
