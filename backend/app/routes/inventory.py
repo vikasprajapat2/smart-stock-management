@@ -1,12 +1,17 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import logging
 
 from app.database import SessionLocal
 from app.models.inventory import Inventory
+from app.models.product import Product
+from app.models.warehouse import Warehouse
 from app.schemas.inventory_schema import (
     InventoryCreate,
     InventoryResponse
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/inventory",
@@ -33,20 +38,36 @@ def create_inventory(
     db: Session = Depends(get_db)
 ):
 
-    new_inventory = Inventory(
-        product_id=inventory.product_id,
-        warehouse_id=inventory.warehouse_id,
-        quantity_available=inventory.quantity_available,
-        quantity_reserved=inventory.quantity_reserved
-    )
+    try:
+        # validate related records exist to avoid DB foreign key errors
+        product = db.query(Product).filter(Product.id == inventory.product_id).first()
+        if not product:
+            raise HTTPException(status_code=400, detail=f"Product with id {inventory.product_id} not found")
 
-    db.add(new_inventory)
+        warehouse = db.query(Warehouse).filter(Warehouse.id == inventory.warehouse_id).first()
+        if not warehouse:
+            raise HTTPException(status_code=400, detail=f"Warehouse with id {inventory.warehouse_id} not found")
 
-    db.commit()
+        new_inventory = Inventory(
+            product_id=inventory.product_id,
+            warehouse_id=inventory.warehouse_id,
+            quantity=inventory.quantity_available,
+            quantity_reserved=inventory.quantity_reserved
+        )
 
-    db.refresh(new_inventory)
+        db.add(new_inventory)
+        db.commit()
+        db.refresh(new_inventory)
+        
+        logger.info(f"Created inventory: {new_inventory.id}")
+        return new_inventory
 
-    return new_inventory
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creating inventory: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
 # GET ALL INVENTORY
@@ -94,11 +115,16 @@ def update_inventory(
 
     inventory.warehouse_id = updated_data.warehouse_id
 
-    inventory.quantity_available = updated_data.quantity_available
+    inventory.quantity = updated_data.quantity
 
     inventory.quantity_reserved = updated_data.quantity_reserved
 
-    db.commit()
+    try:
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
     return {"message": "Inventory updated successfully"}
 
