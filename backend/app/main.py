@@ -8,6 +8,7 @@ from app.routes.purchase_orders import router as purchase_order_router
 from app.routes.inventory import router as inventory_router
 from app.routes.order import router as order_router
 from app.routes.warehouses import router as warehouse_router
+from app.routes.notifications import router as notification_router
 
 # Import all models to ensure they are registered on the metadata
 from app.models import (
@@ -55,3 +56,8 @@ app.include_router(purchase_order_router)
 app.include_router(inventory_router)
 app.include_router(order_router)
 app.include_router(warehouse_router)
+app.include_router(
+    notification_router,
+    prefix="/notifications",
+    tags=["Notifications"]
+)
