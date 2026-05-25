@@ -49,7 +49,7 @@ class ProductScanResponse(BaseModel):
     sku: str
     barcode: str
     warehouse_id: int
-    quantity_available: int
+    quantity: int
     action: str
     message: str
 

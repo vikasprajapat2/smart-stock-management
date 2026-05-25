@@ -214,7 +214,7 @@ def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_
         inventory = Inventory(
             product_id=product.id,
             warehouse_id=warehouse.id,
-            quantity_available=0,
+            quantity=0,
             quantity_reserved=0
         )
         db.add(inventory)
@@ -228,15 +228,15 @@ def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_
         )
         
     if action == "IN":
-        inventory.quantity_available += qty_adj
+        inventory.quantity += qty_adj
         msg = f"Successfully scanned IN: {qty_adj} unit(s) of {product.product_name} added to warehouse {warehouse.warehouse_name}."
     else:  # OUT
-        if inventory.quantity_available < qty_adj:
+        if inventory.quantity < qty_adj:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Insufficient stock in warehouse '{warehouse.warehouse_name}'. Available: {inventory.quantity_available}, trying to scan OUT: {qty_adj}."
+                detail=f"Insufficient stock in warehouse '{warehouse.warehouse_name}'. Available: {inventory.quantity}, trying to scan OUT: {qty_adj}."
             )
-        inventory.quantity_available -= qty_adj
+        inventory.quantity -= qty_adj
         msg = f"Successfully scanned OUT: {qty_adj} unit(s) of {product.product_name} removed from warehouse {warehouse.warehouse_name}."
         
     db.commit()
@@ -247,7 +247,7 @@ def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_
         "sku": product.sku,
         "barcode": product.barcode,
         "warehouse_id": warehouse.id,
-        "quantity_available": inventory.quantity_available,
+        "quantity": inventory.quantity,
         "action": action,
         "message": msg
     }
