@@ -66,7 +66,25 @@ def create_product(product_in: ProductCreate, db: Session = Depends(get_db)):
     # Handle Barcode generation / validation
     barcode = product_in.barcode
     if not barcode:
-        barcode = generate_barcode()
+        for _ in range(10):  # Retry to avoid collision
+            temp_barcode = generate_barcode()
+            existing = db.query(Product).filter(Product.barcode == temp_barcode).first()
+            if not existing:
+                barcode = temp_barcode
+                break
+        if not barcode:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate a unique 10-digit barcode."
+            )
+    else:
+        # Validate uniqueness of provided barcode if passed
+        existing = db.query(Product).filter(Product.barcode == barcode).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Product with barcode '{barcode}' already exists."
+            )
 
     product = Product(
         product_name=product_in.product_name,
@@ -149,6 +167,15 @@ def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Product with SKU '{product_in.sku}' already exists."
+            )
+
+    # Validate barcode uniqueness if being updated
+    if product_in.barcode is not None and product_in.barcode != product.barcode:
+        existing = db.query(Product).filter(Product.barcode == product_in.barcode).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Product with barcode '{product_in.barcode}' already exists."
             )
 
     # Update fields
