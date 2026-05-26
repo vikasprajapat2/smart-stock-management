@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Search, ShoppingBag, Loader, AlertTriangle, 
-  Check, RefreshCw, ShieldAlert, QrCode
+  Check, RefreshCw, ShieldAlert, QrCode, X, Download
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { 
   fetchProducts, createProduct, fetchCategories, 
   checkBackendConnection, fetchWarehouses, submitProductScan
 } from '../utils/api';
 import type { Product, Category, Warehouse } from '../utils/api';
 
-interface InventoryManagerProps {
-  onGetQR: (barcode: string, type: 'text' | 'url' | 'wifi' | 'upi' | 'product') => void;
-}
-
-export const InventoryManager: React.FC<InventoryManagerProps> = ({ onGetQR }) => {
+export const InventoryManager: React.FC = () => {
   // Connection and data states
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [products, setProducts] = useState<Product[]>([]);
@@ -25,6 +22,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onGetQR }) =
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [formSuccess, setFormSuccess] = useState<string>('');
+  const [qrPopupProduct, setQrPopupProduct] = useState<Product | null>(null);
 
   // Add Product Form states
   const [name, setName] = useState<string>('');
@@ -675,7 +673,7 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onGetQR }) =
                         {/* QR Code Action */}
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                           <button
-                            onClick={() => onGetQR(p.barcode, 'product')}
+                            onClick={() => setQrPopupProduct(p)}
                             className="scan-action-btn btn-secondary"
                             style={{ 
                               padding: '0.45rem 0.65rem', 
@@ -714,7 +712,134 @@ export const InventoryManager: React.FC<InventoryManagerProps> = ({ onGetQR }) =
         .table-row-hover:hover {
           background: rgba(255, 255, 255, 0.02);
         }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
+
+      {/* QR Code Modal Popup */}
+      {qrPopupProduct && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div className="glass-panel" style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '380px',
+            padding: '2rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1.5rem',
+            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            <button 
+              onClick={() => setQrPopupProduct(null)}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '0.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+            >
+              <X size={20} />
+            </button>
+            
+            <div style={{ textAlign: 'center' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>
+                {qrPopupProduct.product_name}
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                SKU: <span style={{ fontFamily: 'var(--font-mono)' }}>{qrPopupProduct.sku}</span>
+              </p>
+            </div>
+
+            <div style={{
+              background: '#fff',
+              padding: '1.25rem',
+              borderRadius: '16px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+              border: '4px solid rgba(255,255,255,0.1)',
+              backgroundClip: 'padding-box'
+            }}>
+              <QRCodeSVG 
+                value={qrPopupProduct.barcode}
+                size={200}
+                level="M"
+                includeMargin={false}
+              />
+            </div>
+
+            <div style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: 'rgba(255,255,255,0.03)',
+              borderRadius: '8px',
+              border: '1px solid var(--border-glass)',
+              textAlign: 'center'
+            }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Scannable Barcode Data:</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--accent-cyan)', fontWeight: 600, wordBreak: 'break-all' }}>
+                {qrPopupProduct.barcode}
+              </p>
+            </div>
+            
+            <button 
+              className="scan-action-btn btn-primary"
+              style={{ width: '100%', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+              onClick={() => {
+                const svg = document.querySelector('.glass-panel svg');
+                if (!svg) return;
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+                const img = new Image();
+                img.onload = () => {
+                  canvas.width = img.width + 40;
+                  canvas.height = img.height + 40;
+                  if(ctx) {
+                    ctx.fillStyle = "white";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 20, 20);
+                    const a = document.createElement("a");
+                    a.download = `QR_${qrPopupProduct.sku}.png`;
+                    a.href = canvas.toDataURL("image/png");
+                    a.click();
+                  }
+                };
+                img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+              }}
+            >
+              <Download size={16} />
+              Download QR Image
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

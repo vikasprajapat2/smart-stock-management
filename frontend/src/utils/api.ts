@@ -1,9 +1,8 @@
-// Expanded API Service for connecting OmniScan React frontend to FastAPI stock backend
-
 // Dynamically determine the base URL
-// During local dev: Vite runs on port 5173, FastAPI runs on port 8000
-// When compiled and served: both are on the same host & port
-export const API_BASE = window.location.port === '5173' ? 'http://localhost:8000' : '';
+// In development: always talk to FastAPI on port 8000
+// In production (same host): use relative path ''
+const isDev = import.meta.env.DEV;
+export const API_BASE = isDev ? 'http://localhost:8000' : '';
 
 export interface Warehouse {
   id: number;

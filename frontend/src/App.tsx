@@ -8,7 +8,6 @@ import { ScannerActive } from './components/ScannerActive';
 import { ScannerUpload } from './components/ScannerUpload';
 import { ResultPanel } from './components/ResultPanel';
 import { HistoryPanel, type HistoryItem } from './components/HistoryPanel';
-import { QRGenerator } from './components/QRGenerator';
 import { InventoryManager } from './components/InventoryManager';
 import {
   DashboardView, WarehouseView, SuppliersView,
@@ -21,7 +20,7 @@ import {
 } from './utils/api';
 import type { Warehouse as BackendWarehouse } from './utils/api';
 
-type Tab = 'dashboard' | 'webcam' | 'upload' | 'generator' | 'inventory' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'history';
+type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'history';
 
 
 
@@ -31,6 +30,7 @@ function App() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
   // Backend Integration States
   const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
@@ -39,10 +39,6 @@ function App() {
   const [scanAction, setScanAction] = useState<'IN' | 'OUT'>('OUT');
   const [scanQuantityInput, setScanQuantityInput] = useState<string>('1');
   const [unreadCount, setUnreadCount] = useState<number>(0);
-
-  // QR prefilling states
-  const [qrPrefillValue, setQrPrefillValue] = useState<string>('');
-  const [qrPrefillType, setQrPrefillType] = useState<'text' | 'url' | 'wifi' | 'upi' | 'product'>('text');
 
   // Load preferences, history, backend connectivity and warehouses
   useEffect(() => {
@@ -99,12 +95,6 @@ function App() {
   const handleSetSoundEnabled = (enabled: boolean) => {
     setSoundEnabled(enabled);
     localStorage.setItem('keyafusion_sound_enabled', String(enabled));
-  };
-
-  const handleGetQR = (barcode: string, type: 'text' | 'url' | 'wifi' | 'upi' | 'product') => {
-    setQrPrefillValue(barcode);
-    setQrPrefillType(type);
-    setActiveTab('generator');
   };
 
   // Process camera / upload scans
@@ -289,11 +279,23 @@ function App() {
     localStorage.removeItem('keyafusion_history');
   };
 
+  // Close mobile sidebar on tab change
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    setMobileSidebarOpen(false);
+  };
+
   return (
     <div className="erp-layout-container">
 
+      {/* Mobile Overlay Backdrop */}
+      <div
+        className={`sidebar-mobile-overlay ${mobileSidebarOpen ? 'open' : ''}`}
+        onClick={() => setMobileSidebarOpen(false)}
+      />
+
       {/* Left Navigation Sidebar */}
-      <aside className={`erp-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`erp-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
 
         {/* Sidebar Brand Header */}
         <div className="sidebar-brand" style={{ gap: '0.65rem' }}>
@@ -315,7 +317,7 @@ function App() {
 
           <button
             className={`sidebar-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => handleTabChange('dashboard')}
           >
             <LayoutDashboard size={18} />
             {!sidebarCollapsed && <span>ERP Summary</span>}
@@ -325,7 +327,7 @@ function App() {
 
           <button
             className={`sidebar-nav-btn ${activeTab === 'webcam' ? 'active' : ''}`}
-            onClick={() => setActiveTab('webcam')}
+            onClick={() => handleTabChange('webcam')}
           >
             <Camera size={18} />
             {!sidebarCollapsed && <span>Webcam Scanner</span>}
@@ -333,7 +335,7 @@ function App() {
 
           <button
             className={`sidebar-nav-btn ${activeTab === 'upload' ? 'active' : ''}`}
-            onClick={() => setActiveTab('upload')}
+            onClick={() => handleTabChange('upload')}
           >
             <Image size={18} />
             {!sidebarCollapsed && <span>Upload image</span>}
@@ -345,7 +347,7 @@ function App() {
             <>
               <button
                 className={`sidebar-nav-btn ${activeTab === 'inventory' ? 'active' : ''}`}
-                onClick={() => setActiveTab('inventory')}
+                onClick={() => handleTabChange('inventory')}
               >
                 <ShoppingBag size={18} />
                 {!sidebarCollapsed && <span>Products Catalog</span>}
@@ -353,7 +355,7 @@ function App() {
 
               <button
                 className={`sidebar-nav-btn ${activeTab === 'warehouse' ? 'active' : ''}`}
-                onClick={() => setActiveTab('warehouse')}
+                onClick={() => handleTabChange('warehouse')}
               >
                 <Database size={18} />
                 {!sidebarCollapsed && <span>Logistics Map</span>}
@@ -361,7 +363,7 @@ function App() {
 
               <button
                 className={`sidebar-nav-btn ${activeTab === 'procurement' ? 'active' : ''}`}
-                onClick={() => setActiveTab('procurement')}
+                onClick={() => handleTabChange('procurement')}
               >
                 <Layers size={18} />
                 {!sidebarCollapsed && <span>Procurement (PO)</span>}
@@ -369,7 +371,7 @@ function App() {
 
               <button
                 className={`sidebar-nav-btn ${activeTab === 'sales' ? 'active' : ''}`}
-                onClick={() => setActiveTab('sales')}
+                onClick={() => handleTabChange('sales')}
               >
                 <CreditCard size={18} />
                 {!sidebarCollapsed && <span>Sales billing</span>}
@@ -377,7 +379,7 @@ function App() {
 
               <button
                 className={`sidebar-nav-btn ${activeTab === 'suppliers' ? 'active' : ''}`}
-                onClick={() => setActiveTab('suppliers')}
+                onClick={() => handleTabChange('suppliers')}
               >
                 <Users size={18} />
                 {!sidebarCollapsed && <span>Suppliers Directory</span>}
@@ -388,16 +390,8 @@ function App() {
           <div className="nav-section-title">{!sidebarCollapsed && 'Setup & Utilities'}</div>
 
           <button
-            className={`sidebar-nav-btn ${activeTab === 'generator' ? 'active' : ''}`}
-            onClick={() => setActiveTab('generator')}
-          >
-            <QrCode size={18} />
-            {!sidebarCollapsed && <span>QR Label Maker</span>}
-          </button>
-
-          <button
             className={`sidebar-nav-btn ${activeTab === 'history' ? 'active' : ''}`}
-            onClick={() => setActiveTab('history')}
+            onClick={() => handleTabChange('history')}
           >
             <Clock size={18} />
             {!sidebarCollapsed && <span>Scan History</span>}
@@ -424,7 +418,20 @@ function App() {
         {/* Top Header navbar bar */}
         <header className="erp-topbar">
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {/* Hamburger button - only visible on mobile/tablet */}
+            <button
+              className="hamburger-btn"
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              aria-label="Toggle navigation menu"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                {mobileSidebarOpen
+                  ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>  
+                  : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>
+                }
+              </svg>
+            </button>
             <span style={{ fontSize: '1.2rem' }}>📦</span>
             <div style={{ textTransform: 'capitalize' }}>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>
@@ -485,18 +492,8 @@ function App() {
           )}
 
           {activeTab === 'inventory' && isBackendConnected && (
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <InventoryManager onGetQR={handleGetQR} />
-            </div>
-          )}
-
-          {activeTab === 'generator' && (
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <QrCode size={18} style={{ color: 'var(--accent-purple)' }} />
-                Universal QR & Barcode Label Creator
-              </h2>
-              <QRGenerator initialValue={qrPrefillValue} initialType={qrPrefillType} />
+            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+              <InventoryManager />
             </div>
           )}
 
@@ -527,107 +524,176 @@ function App() {
                   )}
                 </h2>
 
-                {/* Real-time backend stock adjuster controls */}
-                {isBackendConnected && (activeTab === 'webcam' || activeTab === 'upload') && (
-                  <div className="glass-panel" style={{
-                    padding: '1rem 1.25rem',
-                    marginBottom: '1rem',
-                    border: '1px solid rgba(139, 92, 246, 0.2)',
-                    background: 'rgba(139, 92, 246, 0.03)',
-                    borderRadius: '12px'
-                  }}>
-                    <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#a78bfa', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <Database size={14} /> Warehouse Stock Adjustment Mode
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
-
-                      {/* Select Warehouse */}
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Facility</label>
-                        <select
-                          className="camera-select"
-                          style={{ width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.8rem' }}
-                          value={selectedWarehouseId}
-                          onChange={(e) => setSelectedWarehouseId(e.target.value)}
-                        >
-                          {warehouses.map(w => (
-                            <option key={w.id} value={w.id}>{w.warehouse_name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Stock IN / OUT Toggle */}
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Operation</label>
-                        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid var(--border-glass)', padding: '2px' }}>
-                          <button
-                            onClick={() => setScanAction('IN')}
-                            style={{
-                              flex: 1,
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '0.35rem 0.5rem',
-                              background: scanAction === 'IN' ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
-                              color: scanAction === 'IN' ? '#22c55e' : 'var(--text-muted)',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              transition: 'var(--transition-smooth)'
-                            }}
-                          >
-                            ➕ IN
-                          </button>
-                          <button
-                            onClick={() => setScanAction('OUT')}
-                            style={{
-                              flex: 1,
-                              border: 'none',
-                              borderRadius: '4px',
-                              padding: '0.35rem 0.5rem',
-                              background: scanAction === 'OUT' ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                              color: scanAction === 'OUT' ? '#ef4444' : 'var(--text-muted)',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              transition: 'var(--transition-smooth)'
-                            }}
-                          >
-                            ➖ OUT
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Quantity */}
-                      <div style={{ maxWidth: '100px' }}>
-                        <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Qty</label>
-                        <input
-                          type="number"
-                          min="1"
-                          className="history-search-input"
-                          style={{ width: '100%', padding: '0.45rem 0.5rem', fontSize: '0.8rem', textAlign: 'center' }}
-                          value={scanQuantityInput}
-                          onChange={(e) => setScanQuantityInput(e.target.value)}
-                        />
-                      </div>
-
-                    </div>
-                  </div>
-                )}
-
+                {/* Real-time backend stock adjuster controls extracted and passed as props */}
+                {/* View Routing */}
                 {activeTab === 'webcam' && (
                   <ScannerActive
                     onScanSuccess={handleScanSuccess}
                     soundEnabled={soundEnabled}
                     setSoundEnabled={handleSetSoundEnabled}
+                    topControls={isBackendConnected ? (
+                      <div>
+                        <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#a78bfa', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Database size={14} /> Warehouse Stock Adjustment Mode
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
+                          {/* Select Warehouse */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Facility</label>
+                            <select
+                              className="camera-select"
+                              style={{ width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.8rem' }}
+                              value={selectedWarehouseId}
+                              onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                            >
+                              {warehouses.map(w => (
+                                <option key={w.id} value={w.id}>{w.warehouse_name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Stock IN / OUT Toggle */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Operation</label>
+                            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid var(--border-glass)', padding: '2px' }}>
+                              <button
+                                onClick={() => setScanAction('IN')}
+                                style={{
+                                  flex: 1,
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '0.35rem 0.5rem',
+                                  background: scanAction === 'IN' ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
+                                  color: scanAction === 'IN' ? '#22c55e' : 'var(--text-muted)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  transition: 'var(--transition-smooth)'
+                                }}
+                              >
+                                ➕ IN
+                              </button>
+                              <button
+                                onClick={() => setScanAction('OUT')}
+                                style={{
+                                  flex: 1,
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '0.35rem 0.5rem',
+                                  background: scanAction === 'OUT' ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                                  color: scanAction === 'OUT' ? '#ef4444' : 'var(--text-muted)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  transition: 'var(--transition-smooth)'
+                                }}
+                              >
+                                ➖ OUT
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Quantity */}
+                          <div style={{ maxWidth: '100px' }}>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Qty</label>
+                            <input
+                              type="number"
+                              min="1"
+                              className="history-search-input"
+                              style={{ width: '100%', padding: '0.45rem 0.5rem', fontSize: '0.8rem', textAlign: 'center' }}
+                              value={scanQuantityInput}
+                              onChange={(e) => setScanQuantityInput(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   />
                 )}
 
                 {activeTab === 'upload' && (
-                  <ScannerUpload
-                    onScanSuccess={handleScanSuccess}
-                    soundEnabled={soundEnabled}
-                  />
+                  <>
+                    {isBackendConnected && (
+                      <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1rem', border: '1px solid rgba(139, 92, 246, 0.2)', background: 'rgba(139, 92, 246, 0.03)', borderRadius: '12px' }}>
+                        <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#a78bfa', fontWeight: 700, marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Database size={14} /> Warehouse Stock Adjustment Mode
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
+                          {/* Select Warehouse */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Facility</label>
+                            <select
+                              className="camera-select"
+                              style={{ width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.8rem' }}
+                              value={selectedWarehouseId}
+                              onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                            >
+                              {warehouses.map(w => (
+                                <option key={w.id} value={w.id}>{w.warehouse_name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Stock IN / OUT Toggle */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Operation</label>
+                            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid var(--border-glass)', padding: '2px' }}>
+                              <button
+                                onClick={() => setScanAction('IN')}
+                                style={{
+                                  flex: 1,
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '0.35rem 0.5rem',
+                                  background: scanAction === 'IN' ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
+                                  color: scanAction === 'IN' ? '#22c55e' : 'var(--text-muted)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  transition: 'var(--transition-smooth)'
+                                }}
+                              >
+                                ➕ IN
+                              </button>
+                              <button
+                                onClick={() => setScanAction('OUT')}
+                                style={{
+                                  flex: 1,
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  padding: '0.35rem 0.5rem',
+                                  background: scanAction === 'OUT' ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                                  color: scanAction === 'OUT' ? '#ef4444' : 'var(--text-muted)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  transition: 'var(--transition-smooth)'
+                                }}
+                              >
+                                ➖ OUT
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Quantity */}
+                          <div style={{ maxWidth: '100px' }}>
+                            <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Qty</label>
+                            <input
+                              type="number"
+                              min="1"
+                              className="history-search-input"
+                              style={{ width: '100%', padding: '0.45rem 0.5rem', fontSize: '0.8rem', textAlign: 'center' }}
+                              value={scanQuantityInput}
+                              onChange={(e) => setScanQuantityInput(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <ScannerUpload onScanSuccess={handleScanSuccess} soundEnabled={soundEnabled} />
+                  </>
                 )}
 
                 {activeTab === 'history' && (
@@ -881,11 +947,11 @@ function App() {
           border: 1px solid #080a14;
         }
 
-        /* ─── CONTENT VIEWPORT ─────────────────────────────── */
         .erp-content-viewport {
           flex: 1;
           padding: 2rem;
-          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
           background-image: radial-gradient(ellipse at 40% 0%, rgba(6, 182, 212, 0.04) 0%, transparent 60%),
                             radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.03) 0%, transparent 60%);
         }

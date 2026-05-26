@@ -183,12 +183,31 @@ body {
   display: grid;
   grid-template-columns: 1.2fr 0.8fr;
   gap: 2rem;
-  align-items: start;
+  align-items: start; /* Don't stretch the panels to equal heights, let them size to content naturally */
+  min-height: 500px;
+}
+
+.dashboard-grid > section {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-grid > section::-webkit-scrollbar {
+  width: 6px;
+}
+.dashboard-grid > section::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
 }
 
 @media (max-width: 968px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
+    height: auto; /* Fallback to natural height on mobile */
+  }
+  .dashboard-grid > section {
+    overflow-y: visible;
+    height: auto;
   }
 }
 
@@ -199,9 +218,10 @@ body {
   border-radius: 16px;
   background: #000;
   border: 1px solid var(--border-glass);
-  aspect-ratio: 4/3;
   width: 100%;
-  max-width: 640px;
+  aspect-ratio: 16/9; /* Widescreen to save vertical space */
+  min-height: 250px;
+  max-width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -213,22 +233,39 @@ body {
   border-color: rgba(16, 185, 129, 0.4);
 }
 
-/* html5-qrcode overrides */
-#reader {
+/* html5-qrcode overrides - force video to show properly */
+#scanner-viewfinder-reader {
   width: 100% !important;
+  height: 100% !important;
   border: none !important;
   background: black !important;
+  min-height: 200px !important;
+  display: flex;
+  flex-direction: column;
 }
 
-#reader video {
+#scanner-viewfinder-reader video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
-  border-radius: 16px !important;
+  border-radius: 12px !important;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  flex: 1;
 }
 
-#reader__scan_region {
+#scanner-viewfinder-reader__scan_region {
   background: black !important;
+  min-height: 200px !important;
+}
+
+#scanner-viewfinder-reader__scan_region img {
+  display: none !important;
+}
+
+#scanner-viewfinder-reader__dashboard {
+  display: none !important;
 }
 
 /* Custom Overlay when scanner runs */
@@ -844,3 +881,507 @@ body {
   font-size: 0.75rem;
   color: var(--text-muted);
 }
+
+/* ═══════════════════════════════════════════════════
+   FULLY RESPONSIVE BREAKPOINTS
+   Phone | Tablet | Laptop | Desktop | TV
+═══════════════════════════════════════════════════ */
+
+/* ─── MOBILE SIDEBAR OVERLAY ─────────────────────── */
+.sidebar-mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 99;
+  backdrop-filter: blur(4px);
+}
+
+.sidebar-mobile-overlay.open {
+  display: block;
+}
+
+/* Hamburger Menu Button */
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  flex-shrink: 0;
+}
+
+.hamburger-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* ─── WIDE TV / 4K SCREENS (≥1920px) ─────────────── */
+@media (min-width: 1920px) {
+  :root {
+    font-size: 18px;
+  }
+
+  .app-container {
+    max-width: 1800px;
+    padding: 3rem 2rem;
+  }
+
+  .title-glow {
+    font-size: 3.5rem;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1.3fr 0.7fr;
+    gap: 3rem;
+  }
+
+  .erp-content-viewport {
+    padding: 3rem !important;
+  }
+
+  .erp-sidebar {
+    width: 300px !important;
+  }
+
+  .erp-sidebar.collapsed {
+    width: 80px !important;
+  }
+
+  .erp-topbar {
+    height: 80px !important;
+    padding: 0 3rem !important;
+  }
+
+  .sidebar-nav-btn {
+    padding: 0.9rem 1rem !important;
+    font-size: 1rem !important;
+  }
+
+  .brand-name {
+    font-size: 1.2rem !important;
+  }
+}
+
+/* ─── LARGE DESKTOP (≥1440px) ─────────────────────── */
+@media (min-width: 1440px) {
+  .app-container {
+    max-width: 1400px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1.3fr 0.7fr;
+    gap: 2.5rem;
+  }
+}
+
+/* ─── MEDIUM LAPTOP (≤1200px) ─────────────────────── */
+@media (max-width: 1200px) {
+  .erp-sidebar {
+    width: 220px !important;
+  }
+
+  .erp-topbar {
+    padding: 0 1.5rem !important;
+  }
+
+  .erp-content-viewport {
+    padding: 1.5rem !important;
+  }
+
+  .db-indicator-pill span {
+    display: none;
+  }
+
+  .db-indicator-pill {
+    padding: 0.35rem 0.5rem !important;
+  }
+}
+
+/* ─── TABLET LANDSCAPE (≤1024px) ──────────────────── */
+@media (max-width: 1024px) {
+  .erp-sidebar {
+    width: 200px !important;
+    padding: 1.25rem 0.75rem !important;
+  }
+
+  .erp-sidebar.collapsed {
+    width: 60px !important;
+    padding: 1.25rem 0.4rem !important;
+  }
+
+  .sidebar-nav-btn {
+    padding: 0.6rem 0.7rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .brand-name {
+    font-size: 0.9rem !important;
+  }
+
+  .erp-content-viewport {
+    padding: 1.25rem !important;
+  }
+
+  .erp-topbar {
+    padding: 0 1.25rem !important;
+  }
+
+  .title-glow {
+    font-size: 2rem;
+  }
+
+  .dashboard-grid {
+    gap: 1.5rem;
+  }
+}
+
+/* ─── TABLET PORTRAIT (≤768px) ────────────────────── */
+@media (max-width: 768px) {
+  /* Show hamburger, hide sidebar by default */
+  .hamburger-btn {
+    display: flex;
+  }
+
+  /* Sidebar becomes fixed overlay on mobile/tablet */
+  .erp-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 260px !important;
+    z-index: 100 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  .erp-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  /* Main panel takes full width */
+  .erp-main-panel {
+    width: 100% !important;
+    height: 100vh !important;
+  }
+
+  .erp-layout-container {
+    overflow-x: hidden !important;
+  }
+
+  /* Topbar adjustments */
+  .erp-topbar {
+    height: 60px !important;
+    padding: 0 1rem !important;
+    gap: 0.75rem !important;
+  }
+
+  .erp-topbar h3 {
+    font-size: 0.85rem !important;
+  }
+
+  .erp-topbar p {
+    display: none !important;
+  }
+
+  .db-indicator-pill span {
+    display: none !important;
+  }
+
+  .db-indicator-pill {
+    padding: 0.3rem 0.4rem !important;
+  }
+
+  /* Content viewport */
+  .erp-content-viewport {
+    padding: 1rem !important;
+  }
+
+  /* Dashboard grid becomes single column */
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* App container (scanner page) */
+  .app-container {
+    padding: 1rem 0.75rem;
+  }
+
+  .title-glow {
+    font-size: 1.6rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+  }
+
+  .tabs-container {
+    gap: 0.35rem;
+    padding: 0.3rem;
+    max-width: 100%;
+  }
+
+  .tab-btn {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+    gap: 0.35rem;
+  }
+
+  /* History panel max-height reduce */
+  .history-list {
+    max-height: 360px;
+  }
+
+  /* Scanner target box scale down */
+  .scan-target-box {
+    width: 180px;
+    height: 180px;
+  }
+
+  /* Buttons more touch-friendly */
+  .scan-action-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .btn-icon-only {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* WiFi grid single column */
+  .wifi-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .wifi-password-box {
+    grid-column: span 1 !important;
+  }
+
+  /* Scanner controls stack on small screens */
+  .scanner-controls {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  /* UPI amount smaller */
+  .upi-amount {
+    font-size: 1.4rem;
+  }
+
+  /* Footer compact */
+  .erp-footer {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.7rem !important;
+  }
+}
+
+/* ─── SMALL PHONE (≤480px) ────────────────────────── */
+@media (max-width: 480px) {
+  .title-glow {
+    font-size: 1.35rem;
+    letter-spacing: -0.03em;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+  }
+
+  .tabs-container {
+    flex-wrap: wrap;
+    max-width: 100%;
+    gap: 0.25rem;
+  }
+
+  .tab-btn {
+    padding: 0.55rem 0.4rem;
+    font-size: 0.72rem;
+  }
+
+  /* Topbar super compact */
+  .erp-topbar {
+    height: 56px !important;
+    padding: 0 0.75rem !important;
+  }
+
+  .erp-topbar h3 {
+    font-size: 0.8rem !important;
+  }
+
+  /* Content padding minimal */
+  .erp-content-viewport {
+    padding: 0.75rem !important;
+  }
+
+  /* App container very small */
+  .app-container {
+    padding: 0.75rem 0.5rem;
+  }
+
+  /* History items compact */
+  .history-item {
+    padding: 0.75rem;
+    gap: 0.65rem;
+  }
+
+  .history-item-text {
+    font-size: 0.85rem;
+  }
+
+  .history-item-date {
+    font-size: 0.7rem;
+  }
+
+  /* Results card compact */
+  .results-card {
+    padding: 1rem;
+  }
+
+  /* Scan target smaller */
+  .scan-target-box {
+    width: 140px;
+    height: 140px;
+  }
+
+  /* Product card stacks */
+  .product-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* Upload container compact */
+  .upload-container {
+    padding: 2rem 1rem;
+  }
+
+  .upload-icon-wrapper {
+    width: 55px;
+    height: 55px;
+    margin-bottom: 1rem;
+  }
+
+  /* Scanner controls stack */
+  .scanner-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .scan-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .camera-select {
+    width: 100%;
+  }
+
+  /* UPI receipt compact */
+  .upi-amount {
+    font-size: 1.2rem;
+    margin: 0.75rem 0;
+  }
+
+  /* Result badge text truncate */
+  .result-badge {
+    font-size: 0.7rem;
+  }
+
+  /* Glass panel border radius smaller */
+  .glass-panel {
+    border-radius: 14px;
+  }
+
+  /* Footer very compact */
+  .erp-footer {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.65rem !important;
+  }
+
+  /* Warehouse stock adjustment grid */
+  .stock-adjustment-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── VERY SMALL PHONE (≤360px) ──────────────────── */
+@media (max-width: 360px) {
+  .title-glow {
+    font-size: 1.15rem;
+  }
+
+  .tab-btn span {
+    display: none;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.6rem;
+  }
+
+  .erp-topbar h3 {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ─── TOUCH DEVICES: Remove hover translate effects ── */
+@media (hover: none) and (pointer: coarse) {
+  .btn-primary:hover,
+  .btn-danger:hover,
+  .btn-secondary:hover {
+    transform: none !important;
+  }
+
+  .history-item:hover {
+    transform: none !important;
+  }
+
+  /* Larger touch targets */
+  .sidebar-nav-btn {
+    min-height: 44px;
+  }
+
+  .btn-icon-only {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .scan-action-btn {
+    min-height: 48px;
+  }
+}
+
+/* ─── LANDSCAPE PHONE (short height) ─────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .erp-topbar {
+    height: 48px !important;
+  }
+
+  .erp-content-viewport {
+    padding: 0.5rem 1rem !important;
+  }
+
+  .scanner-viewport-wrapper {
+    max-height: 60vh;
+  }
+
+  .history-list {
+    max-height: 200px;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.75rem !important;
+  }
+}
+

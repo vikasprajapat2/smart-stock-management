@@ -7,12 +7,14 @@ interface ScannerActiveProps {
   onScanSuccess: (decodedText: string) => void;
   soundEnabled: boolean;
   setSoundEnabled: (enabled: boolean) => void;
+  topControls?: React.ReactNode;
 }
 
 export const ScannerActive: React.FC<ScannerActiveProps> = ({
   onScanSuccess,
   soundEnabled,
   setSoundEnabled,
+  topControls
 }) => {
   const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
@@ -21,12 +23,12 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const [scanMode, setScanMode] = useState<'single' | 'continuous'>('single');
   const [scanCompleted, setScanCompleted] = useState<boolean>(false);
   const lastScannedTextRef = useRef<string>('');
   const lastScannedTimeRef = useRef<number>(0);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isProcessingRef = useRef<boolean>(false);  // hard lock - blocks ALL callbacks once set
   const elementId = 'scanner-viewfinder-reader';
 
   // Initialize and list cameras
@@ -65,6 +67,10 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
       await stopScanning();
     }
 
+    // Reset ALL locks for fresh session
+    isProcessingRef.current = false;
+    lastScannedTextRef.current = '';
+    lastScannedTimeRef.current = 0;
     setErrorMessage('');
     
     try {
@@ -74,44 +80,52 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
       await html5Qrcode.start(
         cameraId,
         {
-          fps: 15,
+          fps: 5, // Reduced from 15 → 5 to limit callback rate
           qrbox: (width, height) => {
             const size = Math.min(width, height) * 0.65;
             return { width: size, height: size };
           },
-          aspectRatio: 1.333333,
+          aspectRatio: 1.777778
         },
         (decodedText) => {
-          // Success callback
+          // ════════════════════════════════════════════
+          // HARD SCAN GUARD — blocks duplicate callbacks
+          // ════════════════════════════════════════════
+          
+          // FIRST LINE OF DEFENSE: hard boolean lock for any async work (though we don't do async here anymore)
+          if (isProcessingRef.current) return;
+
           const now = Date.now();
-          if (scanMode === 'continuous') {
-            // Prevent duplicate scans of the same code within 3 seconds
-            if (decodedText === lastScannedTextRef.current && now - lastScannedTimeRef.current < 3000) {
-              return;
-            }
-            lastScannedTextRef.current = decodedText;
-            lastScannedTimeRef.current = now;
-          }
 
-          if (soundEnabled) {
-            playSuccessBeep();
-          }
-          triggerHapticFeedback();
-
-          if (scanMode === 'single') {
-            // Stop scanning and mark completed to prevent rapid multiple additions
-            setScanCompleted(true);
-            stopScanning();
+          // Continuous mode: 3-second dedup window per barcode
+          if (
+            decodedText === lastScannedTextRef.current &&
+            now - lastScannedTimeRef.current < 3000
+          ) {
+            return;
           }
           
+          lastScannedTextRef.current = decodedText;
+          lastScannedTimeRef.current = now;
+
+          if (soundEnabled) playSuccessBeep();
+          triggerHapticFeedback();
+          
+          // Flash the screen green momentarily to indicate scan
+          setScanCompleted(true);
+          setTimeout(() => setScanCompleted(false), 500);
+
           onScanSuccess(decodedText);
+          
+          // ════════════════════════════════════════════
         },
         (_errorMessage) => {
-          // Verbal warnings ignored to avoid console spamming
+          // Scan frame errors ignored (not a problem)
         }
       );
 
       setIsScanning(true);
+
       
       // Check if torch/flashlight is supported
       try {
@@ -170,77 +184,137 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      
+      {/* Unified Top Controls Panel */}
+      <div className="glass-panel" style={{
+        padding: '1.25rem',
+        border: '1px solid rgba(139, 92, 246, 0.2)',
+        background: 'rgba(139, 92, 246, 0.03)',
+        borderRadius: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem'
+      }}>
+        {/* Render the injected topControls (e.g. Warehouse Adjuster) */}
+        {topControls}
+      </div>
+
       {/* Scanner Wrapper */}
       <div className={`scanner-viewport-wrapper ${isScanning ? 'active' : ''}`}>
-        <div id={elementId} style={{ display: isScanning ? 'block' : 'none', width: '100%', height: '100%', borderRadius: '12px', overflow: 'hidden' }}></div>
-        
-        {/* Animated Scan Box Overlay when running */}
+        {/* html5-qrcode container - MUST always be in DOM and visible for camera to work */}
+        <div
+          id={elementId}
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            display: isScanning ? 'block' : 'none',
+            minHeight: '240px',
+            background: '#000',
+          }}
+        />
+
+        {/* Animated Scan Box Overlay when running - pointer-events none so it doesn't block video */}
         {isScanning && (
-          <div className="scan-overlay-container">
-            <div className="scan-target-box">
-              <div className="scan-laser-line"></div>
-              <div className="scan-corner-bl"></div>
-              <div className="scan-corner-br"></div>
+          <>
+            {/* Controls Overlay inside Camera Viewport */}
+            <div style={{ 
+              position: 'absolute', 
+              top: '1rem', 
+              right: '1rem', 
+              zIndex: 20, 
+              display: 'flex', 
+              gap: '0.5rem',
+              background: 'rgba(0,0,0,0.5)',
+              padding: '0.5rem',
+              borderRadius: '8px',
+              backdropFilter: 'blur(4px)'
+            }}>
+              {cameras.length > 1 && (
+                <select 
+                  className="camera-select"
+                  value={selectedCameraId}
+                  onChange={(e) => setSelectedCameraId(e.target.value)}
+                  style={{ maxWidth: '100px', background: 'transparent', border: 'none', color: '#fff' }}
+                >
+                  {cameras.map((device) => (
+                    <option key={device.id} value={device.id} style={{ color: '#000' }}>
+                      {device.label || `Cam ${cameras.indexOf(device) + 1}`}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {hasTorch && (
+                <button 
+                  className={`btn-icon-only ${torchActive ? 'active' : ''}`}
+                  onClick={toggleTorch}
+                  title={torchActive ? 'Turn Flashlight Off' : 'Turn Flashlight On'}
+                  style={{ background: 'transparent', border: 'none' }}
+                >
+                  <Sparkles size={18} />
+                </button>
+              )}
+
+              <button 
+                className={`btn-icon-only ${soundEnabled ? 'active' : ''}`}
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                title={soundEnabled ? 'Mute Scan Sounds' : 'Unmute Scan Sounds'}
+                style={{ background: 'transparent', border: 'none' }}
+              >
+                {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              </button>
+
+              <button 
+                className="scan-action-btn btn-danger"
+                onClick={stopScanning}
+                style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', height: '32px' }}
+              >
+                <CameraOff size={14} />
+                Stop
+              </button>
             </div>
-          </div>
+
+            <div className="scan-overlay-container" style={{ pointerEvents: 'none' }}>
+              <div className="scan-target-box">
+                <div className="scan-laser-line"></div>
+                <div className="scan-corner-bl"></div>
+                <div className="scan-corner-br"></div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Placeholder if camera not running */}
         {!isScanning && (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            {scanCompleted ? (
-              <>
-                <div style={{
-                  width: '60px',
-                  height: '60px',
-                  borderRadius: '50%',
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 1.5rem',
-                  border: '1px solid rgba(34, 197, 94, 0.3)'
-                }}>
-                  <Check size={32} />
-                </div>
-                <p style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--accent-neon)' }}>
-                  Scan Successful!
-                </p>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '300px', margin: '0 auto 1.5rem' }}>
-                  The item barcode has been sent to the database. Ready for the next scan.
-                </p>
-                <button 
-                  className="scan-action-btn btn-primary"
-                  onClick={() => {
-                    setScanCompleted(false);
-                    startScanning(selectedCameraId);
-                  }}
-                  style={{ margin: '0 auto' }}
-                >
-                  <Camera size={18} />
-                  Scan Next Product
-                </button>
-              </>
-            ) : (
-              <>
-                <CameraOff size={48} style={{ margin: '0 auto 1.5rem', opacity: 0.5 }} />
-                <p style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '0.5rem', color: '#fff' }}>
-                  Camera Scanner is Off
-                </p>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '300px', margin: '0 auto 1.5rem' }}>
-                  Launch your camera to scan any QR code, Google Pay payment code, or product barcode.
-                </p>
-                <button 
-                  className="scan-action-btn btn-primary"
-                  onClick={() => startScanning(selectedCameraId)}
-                  style={{ margin: '0 auto' }}
-                >
-                  <Camera size={18} />
-                  Start Camera Scanner
-                </button>
-              </>
-            )}
+          <div className="camera-overlay" style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+            textAlign: 'center',
+            padding: '2rem'
+          }}>
+            <CameraOff size={48} style={{ margin: '0 auto 1.5rem', opacity: 0.5 }} />
+            <p style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '0.5rem', color: '#fff' }}>
+              Camera Scanner is Off
+            </p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '300px', margin: '0 auto 1.5rem' }}>
+              Launch your camera to scan any QR code, Google Pay payment code, or product barcode.
+            </p>
+            <button 
+              className="scan-action-btn btn-primary"
+              onClick={() => startScanning(selectedCameraId)}
+              style={{ margin: '0 auto' }}
+            >
+              <Camera size={18} />
+              Start Camera Scanner
+            </button>
           </div>
         )}
       </div>
@@ -260,118 +334,7 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
         </div>
       )}
 
-      {/* Controls panel */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        
-        {/* Toggle Mode */}
-        <div className="glass-panel" style={{
-          padding: '0.5rem 0.75rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '1rem',
-          background: 'rgba(255, 255, 255, 0.01)',
-          border: '1px solid rgba(255,255,255,0.05)',
-          borderRadius: '8px'
-        }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Scanner Mode:</span>
-          <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px solid var(--border-glass)', padding: '2px', width: '220px' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setScanMode('single');
-                setScanCompleted(false);
-              }}
-              style={{
-                flex: 1,
-                border: 'none',
-                borderRadius: '4px',
-                padding: '0.35rem 0.5rem',
-                background: scanMode === 'single' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                color: scanMode === 'single' ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'var(--transition-smooth)'
-              }}
-            >
-              🎯 Single Scan
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setScanMode('continuous');
-                setScanCompleted(false);
-              }}
-              style={{
-                flex: 1,
-                border: 'none',
-                borderRadius: '4px',
-                padding: '0.35rem 0.5rem',
-                background: scanMode === 'continuous' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
-                color: scanMode === 'continuous' ? '#c084fc' : 'var(--text-muted)',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'var(--transition-smooth)'
-              }}
-            >
-              🔄 Continuous
-            </button>
-          </div>
-        </div>
-
-        {isScanning && (
-          <div className="scanner-controls" style={{ marginTop: '0.25rem' }}>
-            {/* Camera Selection */}
-            {cameras.length > 1 && (
-              <select 
-                className="camera-select"
-                value={selectedCameraId}
-                onChange={(e) => setSelectedCameraId(e.target.value)}
-              >
-                {cameras.map((device) => (
-                  <option key={device.id} value={device.id}>
-                    {device.label || `Camera ${cameras.indexOf(device) + 1}`}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {/* Flashlight toggle */}
-            {hasTorch && (
-              <button 
-                className={`btn-icon-only ${torchActive ? 'active' : ''}`}
-                onClick={toggleTorch}
-                title={torchActive ? 'Turn Flashlight Off' : 'Turn Flashlight On'}
-              >
-                <Sparkles size={20} />
-              </button>
-            )}
-
-            {/* Audio Beep Switch */}
-            <div className="sound-toggle-wrapper" style={{ marginLeft: 'auto' }}>
-              <button 
-                className={`btn-icon-only ${soundEnabled ? 'active' : ''}`}
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                title={soundEnabled ? 'Mute Scan Sounds' : 'Unmute Scan Sounds'}
-              >
-                {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-              </button>
-              <span style={{ fontSize: '0.85rem' }}>{soundEnabled ? 'Sound On' : 'Mute'}</span>
-            </div>
-
-            {/* Stop Button */}
-            <button 
-              className="scan-action-btn btn-danger"
-              onClick={stopScanning}
-            >
-              <CameraOff size={18} />
-              Stop
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Controls panel removed from bottom, moved to top */}
     </div>
   );
 };
