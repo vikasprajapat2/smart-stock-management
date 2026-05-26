@@ -17,6 +17,7 @@ from app.models.role import Role
 from app.models.user import User
 from app.routes.auth import router as auth_router
 import app.models
+from app.routes.users import router as users_router
 
 # Import all models to ensure they are registered on the metadata
 from app.models import (
@@ -135,3 +136,4 @@ app.include_router(
 )
 app.include_router(dashboard_router)
 app.include_router(auth_router)
+app.include_router(users_router)

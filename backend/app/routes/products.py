@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import List, Optional
+from app.utils.role_checker import (
+    require_admin,
+    require_staff
+)
 
 from app.database import get_db
 from app.models.product import Product
@@ -28,7 +32,11 @@ def get_product_stock(db: Session, product_id: int) -> int:
     return qty if qty is not None else 0
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-def create_product(product_in: ProductCreate, db: Session = Depends(get_db)):
+def create_product(
+    product_in: ProductCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_staff)
+):
     # Validate category if provided
     category_name = None
     if product_in.category_id:
@@ -144,7 +152,12 @@ def get_product(id: int, db: Session = Depends(get_db)):
     return product
 
 @router.put("/{id}", response_model=ProductResponse)
-def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get_db)):
+def update_product(
+    id: int,
+    product_in: ProductUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_staff)
+):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
         raise HTTPException(
@@ -190,7 +203,11 @@ def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get
     return product
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(id: int, db: Session = Depends(get_db)):
+def delete_product(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin)
+):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
         raise HTTPException(
@@ -206,7 +223,11 @@ def delete_product(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/scan", response_model=ProductScanResponse)
-def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_db)):
+def scan_product_barcode(
+    scan_in: ProductScanRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_staff)
+):
     try:
         # 1. Validate action value (must be IN or OUT)
         action = scan_in.action.upper().strip()
