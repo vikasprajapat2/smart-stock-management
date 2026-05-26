@@ -13,6 +13,9 @@ from app.routes.order import router as order_router
 from app.routes.warehouses import router as warehouse_router
 from app.routes.notifications import router as notification_router
 from app.routes.dashboard import router as dashboard_router
+from app.models.role import Role
+from app.models.user import User
+from app.routes.users import router as users_router
 
 # Import all models to ensure they are registered on the metadata
 from app.models import (
@@ -129,3 +132,4 @@ app.include_router(
     tags=["Notifications"]
 )
 app.include_router(dashboard_router)
+app.include_router(users_router)
