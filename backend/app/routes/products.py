@@ -16,7 +16,6 @@ from app.schemas.product_schema import (
     ProductScanResponse
 )
 from app.utils.product_helpers import generate_sku, generate_barcode
-from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
 
 router = APIRouter(
     prefix="/products",
@@ -207,108 +206,76 @@ def delete_product(id: int, db: Session = Depends(get_db)):
 
 @router.post("/scan", response_model=ProductScanResponse)
 def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_db)):
-    try:
-        # 1. Validate action value (must be IN or OUT)
-        action = scan_in.action.upper().strip()
-        if action not in ["IN", "OUT"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Action must be either 'IN' or 'OUT'."
-            )
-        
-        # 2. Check if the product exists with the given barcode
-        barcode = scan_in.barcode.strip()
-        product = db.query(Product).filter(Product.barcode == barcode).first()
-        if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product with barcode '{barcode}' not found."
-            )
-        
-        # 3. Check if the warehouse exists
-        warehouse = db.query(Warehouse).filter(Warehouse.id == scan_in.warehouse_id).first()
-        if not warehouse:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Warehouse with id {scan_in.warehouse_id} not found."
-            )
-            
-        # 4. Fetch or create inventory record for this product and warehouse
-        inventory = db.query(Inventory).filter(
-            Inventory.product_id == product.id,
-            Inventory.warehouse_id == warehouse.id
-        ).first()
-        
-        if not inventory:
-            inventory = Inventory(
-                product_id=product.id,
-                warehouse_id=warehouse.id,
-                quantity=0,
-                quantity_reserved=0
-            )
-            db.add(inventory)
-            db.flush()
-            
-        # 5. Apply IN or OUT adjustment
-        qty_adj = scan_in.quantity if scan_in.quantity is not None else 1
-        if qty_adj <= 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Quantity to scan must be a positive integer."
-            )
-            
-        old_qty = inventory.quantity
-
-        if action == "IN":
-            inventory.quantity += qty_adj
-            new_qty = inventory.quantity
-            msg = f"Successfully scanned IN: {qty_adj} unit(s) of {product.product_name} added to warehouse {warehouse.warehouse_name}."
-        else:  # OUT
-            if inventory.quantity < qty_adj:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Insufficient stock in warehouse '{warehouse.warehouse_name}'. Available: {inventory.quantity}, trying to scan OUT: {qty_adj}."
-                )
-            inventory.quantity -= qty_adj
-            new_qty = inventory.quantity
-            msg = f"Successfully scanned OUT: {qty_adj} unit(s) of {product.product_name} removed from warehouse {warehouse.warehouse_name}."
-            
-        # Log inventory change
-        log_inventory_change(
-            db=db,
-            product_id=product.id,
-            old_qty=old_qty,
-            new_qty=new_qty,
-            action=f"SCAN_{action}"
+    # 1. Validate action value (must be IN or OUT)
+    action = scan_in.action.upper().strip()
+    if action not in ["IN", "OUT"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Action must be either 'IN' or 'OUT'."
         )
-
-        # Low stock check (warehouse-based & deduplicated)
-        check_and_trigger_low_stock_alert(
-            db=db,
+    
+    # 2. Check if the product exists with the given barcode
+    barcode = scan_in.barcode.strip()
+    product = db.query(Product).filter(Product.barcode == barcode).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with barcode '{barcode}' not found."
+        )
+    
+    # 3. Check if the warehouse exists
+    warehouse = db.query(Warehouse).filter(Warehouse.id == scan_in.warehouse_id).first()
+    if not warehouse:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Warehouse with id {scan_in.warehouse_id} not found."
+        )
+        
+    # 4. Fetch or create inventory record for this product and warehouse
+    inventory = db.query(Inventory).filter(
+        Inventory.product_id == product.id,
+        Inventory.warehouse_id == warehouse.id
+    ).first()
+    
+    if not inventory:
+        inventory = Inventory(
             product_id=product.id,
             warehouse_id=warehouse.id,
-            quantity=new_qty
+            quantity=0,
+            quantity_reserved=0
         )
-
-        db.commit()
-        db.refresh(inventory)
+        db.add(inventory)
         
-        return {
-            "product_name": product.product_name,
-            "sku": product.sku,
-            "barcode": product.barcode,
-            "warehouse_id": warehouse.id,
-            "quantity": inventory.quantity,
-            "action": action,
-            "message": msg
-        }
-    except HTTPException as he:
-        db.rollback()
-        raise he
-    except Exception as e:
-        db.rollback()
+    # 5. Apply IN or OUT adjustment
+    qty_adj = scan_in.quantity if scan_in.quantity is not None else 1
+    if qty_adj <= 0:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Quantity to scan must be a positive integer."
         )
+        
+    if action == "IN":
+        inventory.quantity += qty_adj
+        msg = f"Successfully scanned IN: {qty_adj} unit(s) of {product.product_name} added to warehouse {warehouse.warehouse_name}."
+    else:  # OUT
+        if inventory.quantity < qty_adj:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Insufficient stock in warehouse '{warehouse.warehouse_name}'. Available: {inventory.quantity}, trying to scan OUT: {qty_adj}."
+            )
+        inventory.quantity -= qty_adj
+        msg = f"Successfully scanned OUT: {qty_adj} unit(s) of {product.product_name} removed from warehouse {warehouse.warehouse_name}."
+        
+    db.commit()
+    db.refresh(inventory)
+    
+    return {
+        "product_name": product.product_name,
+        "sku": product.sku,
+        "barcode": product.barcode,
+        "warehouse_id": warehouse.id,
+        "quantity": inventory.quantity,
+        "action": action,
+        "message": msg
+    }
 
