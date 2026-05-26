@@ -27,6 +27,7 @@ class Supplier(Base):
     phone = Column(String(20))
 
     address = Column(String(255))
+    gst_number = Column(String(20), nullable=True)
 
     is_active = Column(Boolean, default=True)
 

@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
 from datetime import datetime
+from app.models.inventory import Inventory
+from fastapi import HTTPException
 
 from app.database import get_db
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
@@ -256,3 +258,55 @@ def delete_purchase_order(id: int, db: Session = Depends(get_db)):
     db.delete(po)
     db.commit()
     return None
+# RECEIVE PURCHASE ORDER
+@router.put("/{po_id}/receive")
+def receive_purchase_order(
+    po_id: int,
+    db: Session = Depends(get_db)
+):
+
+    po = db.query(PurchaseOrder).filter(
+        PurchaseOrder.id == po_id
+    ).first()
+
+    if not po:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found"
+        )
+
+    if po.status == "RECEIVED":
+        raise HTTPException(
+            status_code=400,
+            detail="Purchase order already received"
+        )
+
+    for item in po.items:
+
+        inventory = db.query(Inventory).filter(
+            Inventory.product_id == item.product_id,
+            Inventory.warehouse_id == po.warehouse_id
+        ).first()
+
+        if inventory:
+
+            inventory.quantity += item.quantity
+
+        else:
+
+            inventory = Inventory(
+                product_id=item.product_id,
+                warehouse_id=po.warehouse_id,
+                quantity=item.quantity,
+                quantity_reserved=0
+            )
+
+            db.add(inventory)
+
+    po.status = "RECEIVED"
+
+    db.commit()
+
+    return {
+        "message": "Purchase order received successfully"
+    }
