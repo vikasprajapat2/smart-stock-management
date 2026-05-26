@@ -444,6 +444,112 @@
       display: block;
       animation: fadeSlideIn 0.3s ease;
     }
+
+    /* Table styling */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+    
+    th {
+      padding: 12px;
+      border-bottom: 2px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    
+    .badge-action {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .badge-action.deduction { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    .badge-action.receipt { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .badge-action.manual { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .badge-action.scan_in { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+    .badge-action.scan_out { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+    
+    .alert-card-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+      margin-bottom: 8px;
+    }
+    
+    .alert-card-item.unread {
+      border-left: 4px solid var(--accent-out);
+      background: rgba(239, 68, 68, 0.03);
+    }
+    
+    .alert-info {
+      flex: 1;
+      margin-right: 12px;
+    }
+    
+    .alert-title-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    
+    .alert-desc-text {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-small:hover {
+      background: var(--surface-hover);
+    }
+    .btn-small.primary {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+    .btn-small.primary:hover {
+      opacity: 0.88;
+    }
   </style>
 </head>
 <body>
@@ -457,9 +563,12 @@
 </header>
 
 <!-- Tab Navigation -->
-<div class="tabs-nav">
-  <button class="tab-nav-btn active" onclick="switchTab('scanner-tab')">📷 Scanner UI</button>
-  <button class="tab-nav-btn" onclick="switchTab('generator-tab')">🖨 QR Generator</button>
+<div class="tabs-nav" style="flex-wrap: wrap;">
+  <button class="tab-nav-btn active" onclick="switchTab('scanner-tab', this)">📷 Scanner</button>
+  <button class="tab-nav-btn" onclick="switchTab('generator-tab', this)">🖨 QR Generator</button>
+  <button class="tab-nav-btn" onclick="switchTab('warehouse-tab', this)">📊 Warehouse Stock</button>
+  <button class="tab-nav-btn" onclick="switchTab('alerts-tab', this)">⚠️ Alerts</button>
+  <button class="tab-nav-btn" onclick="switchTab('logs-tab', this)">📜 Logs</button>
 </div>
 
 <!-- Tab 1: Scanner UI -->
@@ -616,6 +725,120 @@
   </div>
 </div>
 
+<!-- Tab 3: Warehouse Stock -->
+<div class="tab-content" id="warehouse-tab">
+  <div class="card">
+    <div class="card-label">Select Warehouse</div>
+    <select id="warehouse-stock-select" onchange="loadWarehouseStock()">
+      <option value="">Select a warehouse...</option>
+    </select>
+  </div>
+  
+  <div class="card">
+    <div class="card-label">Stock Status</div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Barcode</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+        <tbody id="warehouse-stock-table-body">
+          <tr>
+            <td colspan="4" class="empty-history" style="text-align: center;">Select a warehouse to view stock.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 4: Alerts -->
+<div class="tab-content" id="alerts-tab">
+  <div class="card">
+    <div class="card-label">⚙️ Alert Configuration (Reorder Thresholds)</div>
+    <div class="table-container" style="max-height: 250px; overflow-y: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Alert Limit (Reorder Level)</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="reorder-settings-table-body">
+          <tr>
+            <td colspan="4" class="empty-history" style="text-align: center;">Loading settings…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">⚠️ Products below Reorder Level</div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Warehouse</th>
+            <th>Quantity</th>
+            <th>Reorder Level</th>
+          </tr>
+        </thead>
+        <tbody id="low-stock-table-body">
+          <tr>
+            <td colspan="4" class="empty-history" style="text-align: center;">Loading low stock products…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div class="card-label" style="margin-bottom:0;">🔔 System Notifications</div>
+      <button class="btn-small" onclick="loadLowStockAlerts()">🔄 Refresh</button>
+    </div>
+    <div id="notifications-list-container">
+      <div class="empty-history">Loading notifications…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 5: Logs -->
+<div class="tab-content" id="logs-tab">
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div class="card-label" style="margin-bottom:0;">📜 Recent Stock Activity Log</div>
+      <button class="btn-small" onclick="loadInventoryLogs()">🔄 Refresh</button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Product</th>
+            <th>Action</th>
+            <th>Qty Change</th>
+            <th>Ending Qty</th>
+          </tr>
+        </thead>
+        <tbody id="logs-table-body">
+          <tr>
+            <td colspan="5" class="empty-history" style="text-align: center;">Loading logs…</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <script>
   // ─── Config ───────────────────────────────────────────────
   const API_BASE = window.location.origin; // same origin as FastAPI
@@ -631,11 +854,15 @@
   // ─── Load Warehouses ──────────────────────────────────────
   async function loadWarehouses() {
     const sel = document.getElementById('warehouse-select');
+    const selStock = document.getElementById('warehouse-stock-select');
     try {
       const res = await fetch(`${API_BASE}/warehouses/`);
       if (!res.ok) throw new Error('Failed to fetch warehouses');
       const data = await res.json();
+      
       sel.innerHTML = '';
+      selStock.innerHTML = '<option value="">Select a warehouse...</option>';
+      
       if (!data.length) {
         sel.innerHTML = '<option value="">No warehouses found</option>';
         return;
@@ -645,9 +872,15 @@
         opt.value = w.id;
         opt.textContent = `${w.warehouse_name} (ID: ${w.id})`;
         sel.appendChild(opt);
+        
+        const opt2 = document.createElement('option');
+        opt2.value = w.id;
+        opt2.textContent = `${w.warehouse_name} (ID: ${w.id})`;
+        selStock.appendChild(opt2);
       });
     } catch (e) {
       sel.innerHTML = '<option value="">Error loading warehouses</option>';
+      selStock.innerHTML = '<option value="">Error loading warehouses</option>';
       console.error(e);
     }
   }
@@ -909,18 +1142,303 @@
   }
 
   // ─── Tabs Navigation ──────────────────────────────────────
-  function switchTab(tabId) {
+  function switchTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-nav-btn').forEach(el => el.classList.remove('active'));
     
     document.getElementById(tabId).classList.add('active');
     
-    if (tabId === 'scanner-tab') {
-      document.querySelectorAll('.tab-nav-btn')[0].classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
     } else {
-      document.querySelectorAll('.tab-nav-btn')[1].classList.add('active');
+      // Fallback fallback selector
+      const btns = document.querySelectorAll('.tab-nav-btn');
+      if (tabId === 'scanner-tab') btns[0].classList.add('active');
+      else if (tabId === 'generator-tab') btns[1].classList.add('active');
+      else if (tabId === 'warehouse-tab') btns[2].classList.add('active');
+      else if (tabId === 'alerts-tab') btns[3].classList.add('active');
+      else if (tabId === 'logs-tab') btns[4].classList.add('active');
+    }
+    
+    if (tabId !== 'scanner-tab') {
       stopCamera();
+    }
+    
+    if (tabId === 'generator-tab') {
       loadGeneratorProducts();
+    } else if (tabId === 'warehouse-tab') {
+      loadWarehouseStock();
+    } else if (tabId === 'alerts-tab') {
+      loadLowStockAlerts();
+    } else if (tabId === 'logs-tab') {
+      loadInventoryLogs();
+    }
+  }
+
+  // ─── Tab-Specific Data Loaders ────────────────────────────
+  async function fetchAllProductsMap() {
+    try {
+      const res = await fetch(`${API_BASE}/products/`);
+      if (!res.ok) return {};
+      const data = await res.json();
+      const map = {};
+      data.forEach(p => { map[p.id] = p; });
+      return map;
+    } catch (e) {
+      console.error(e);
+      return {};
+    }
+  }
+
+  async function fetchAllWarehousesMap() {
+    try {
+      const res = await fetch(`${API_BASE}/warehouses/`);
+      if (!res.ok) return {};
+      const data = await res.json();
+      const map = {};
+      data.forEach(w => { map[w.id] = w; });
+      return map;
+    } catch (e) {
+      console.error(e);
+      return {};
+    }
+  }
+
+  async function loadWarehouseStock() {
+    const whId = document.getElementById('warehouse-stock-select').value;
+    const tbody = document.getElementById('warehouse-stock-table-body');
+    if (!whId) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-history" style="text-align: center;">Select a warehouse to view stock.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-history" style="text-align: center;"><span class="spinner"></span> Loading stock…</td></tr>';
+    
+    try {
+      const [prodMap, res] = await Promise.all([
+        fetchAllProductsMap(),
+        fetch(`${API_BASE}/inventory/warehouse/${whId}`)
+      ]);
+      
+      if (!res.ok) throw new Error('Failed to fetch stock');
+      const data = await res.json();
+      
+      tbody.innerHTML = '';
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-history" style="text-align: center;">No stock records found for this warehouse.</td></tr>';
+        return;
+      }
+      
+      data.forEach(inv => {
+        const prod = prodMap[inv.product_id] || { product_name: `Product #${inv.product_id}`, sku: '—', barcode: '—' };
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${prod.product_name}</strong></td>
+          <td><code>${prod.sku || '—'}</code></td>
+          <td><code>${prod.barcode || '—'}</code></td>
+          <td><strong style="color:var(--text);">${inv.quantity}</strong></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="4" class="empty-history" style="text-align: center; color:var(--accent-out);">Error loading stock: ${e.message}</td></tr>`;
+    }
+  }
+
+  async function loadLowStockAlerts() {
+    const lowTbody = document.getElementById('low-stock-table-body');
+    const notifContainer = document.getElementById('notifications-list-container');
+    const settingsTbody = document.getElementById('reorder-settings-table-body');
+    
+    lowTbody.innerHTML = '<tr><td colspan="4" class="empty-history" style="text-align: center;"><span class="spinner"></span> Loading low stock…</td></tr>';
+    notifContainer.innerHTML = '<div class="empty-history"><span class="spinner"></span> Loading notifications…</div>';
+    settingsTbody.innerHTML = '<tr><td colspan="4" class="empty-history" style="text-align: center;"><span class="spinner"></span> Loading settings…</td></tr>';
+    
+    try {
+      const [prodMap, whMap, lowRes, notifRes] = await Promise.all([
+        fetchAllProductsMap(),
+        fetchAllWarehousesMap(),
+        fetch(`${API_BASE}/inventory/low-stock`),
+        fetch(`${API_BASE}/notifications/`)
+      ]);
+      
+      // Render low stock
+      if (lowRes.ok) {
+        const lowData = await lowRes.json();
+        lowTbody.innerHTML = '';
+        if (!lowData.length) {
+          lowTbody.innerHTML = '<tr><td colspan="4" class="empty-history" style="text-align: center; color:var(--accent-in);">All stock levels are optimal!</td></tr>';
+        } else {
+          lowData.forEach(inv => {
+            const prod = prodMap[inv.product_id] || { product_name: `Product #${inv.product_id}`, reorder_level: '—' };
+            const wh = whMap[inv.warehouse_id] || { warehouse_name: `Warehouse #${inv.warehouse_id}` };
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><span style="color:#fca5a5; font-weight:600;">⚠️ ${prod.product_name}</span></td>
+              <td>${wh.warehouse_name}</td>
+              <td><strong style="color:var(--accent-out);">${inv.quantity}</strong></td>
+              <td><code>${prod.reorder_level}</code></td>
+            `;
+            lowTbody.appendChild(tr);
+          });
+        }
+      } else {
+        lowTbody.innerHTML = '<tr><td colspan="4" class="empty-history" style="text-align: center; color:var(--accent-out);">Failed to load low stock products.</td></tr>';
+      }
+      
+      // Render reorder thresholds config table
+      settingsTbody.innerHTML = '';
+      const prodsList = Object.values(prodMap);
+      if (!prodsList.length) {
+        settingsTbody.innerHTML = '<tr><td colspan="4" class="empty-history" style="text-align: center;">No products found.</td></tr>';
+      } else {
+        // Sort by product name
+        prodsList.sort((a, b) => a.product_name.localeCompare(b.product_name));
+        prodsList.forEach(p => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${p.product_name}</strong></td>
+            <td><code>${p.sku || '—'}</code></td>
+            <td>
+              <input type="number" id="reorder-level-input-${p.id}" value="${p.reorder_level !== null ? p.reorder_level : 0}" min="0" max="9999" style="width:70px; padding:6px; font-size:12px; margin:0;" />
+            </td>
+            <td>
+              <button class="btn-small primary" onclick="updateReorderLevel(${p.id}, this)">Save</button>
+            </td>
+          `;
+          settingsTbody.appendChild(tr);
+        });
+      }
+      
+      // Render notifications
+      if (notifRes.ok) {
+        const notifData = await notifRes.json();
+        notifContainer.innerHTML = '';
+        
+        // Sort notifications: unread first, then by ID descending
+        notifData.sort((a, b) => {
+          if (a.is_read !== b.is_read) return a.is_read ? 1 : -1;
+          return b.id - a.id;
+        });
+        
+        if (!notifData.length) {
+          notifContainer.innerHTML = '<div class="empty-history">No notifications in system.</div>';
+        } else {
+          notifData.forEach(n => {
+            const div = document.createElement('div');
+            div.className = `alert-card-item ${n.is_read ? '' : 'unread'}`;
+            
+            let typeIcon = 'ℹ️';
+            if (n.type === 'warning') typeIcon = '⚠️';
+            else if (n.type === 'error') typeIcon = '❌';
+            else if (n.type === 'success') typeIcon = '✅';
+            
+            div.innerHTML = `
+              <div class="alert-info">
+                <div class="alert-title-text">${typeIcon} ${n.title}</div>
+                <div class="alert-desc-text">${n.message}</div>
+              </div>
+              <div>
+                ${n.is_read 
+                  ? '<span style="font-size:11px; color:var(--muted); font-weight:500;">Read</span>' 
+                  : `<button class="btn-small primary" onclick="markNotificationRead(${n.id})">Mark Read</button>`
+                }
+              </div>
+            `;
+            notifContainer.appendChild(div);
+          });
+        }
+      } else {
+        notifContainer.innerHTML = '<div class="empty-history" style="color:var(--accent-out);">Failed to load notifications.</div>';
+      }
+    } catch (e) {
+      console.error(e);
+      lowTbody.innerHTML = `<tr><td colspan="4" class="empty-history" style="text-align: center; color:var(--accent-out);">Error loading: ${e.message}</td></tr>`;
+      notifContainer.innerHTML = `<div class="empty-history" style="color:var(--accent-out);">Error: ${e.message}</div>`;
+    }
+  }
+
+  async function updateReorderLevel(prodId, btn) {
+    const input = document.getElementById(`reorder-level-input-${prodId}`);
+    const val = parseInt(input.value);
+    if (isNaN(val) || val < 0) {
+      alert("Please enter a valid non-negative number.");
+      return;
+    }
+    
+    const oldBtnText = btn.textContent;
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+    
+    try {
+      const res = await fetch(`${API_BASE}/products/${prodId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reorder_level: val })
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Failed to update');
+      }
+      
+      // Reload page data
+      await loadLowStockAlerts();
+    } catch (e) {
+      alert("Error updating reorder level: " + e.message);
+      btn.textContent = oldBtnText;
+      btn.disabled = false;
+    }
+  }
+
+  async function markNotificationRead(id) {
+    try {
+      const res = await fetch(`${API_BASE}/notifications/${id}/read`, { method: 'PUT' });
+      if (res.ok) {
+        loadLowStockAlerts();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function loadInventoryLogs() {
+    const tbody = document.getElementById('logs-table-body');
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-history" style="text-align: center;"><span class="spinner"></span> Loading logs…</td></tr>';
+    
+    try {
+      const res = await fetch(`${API_BASE}/inventory/logs`);
+      if (!res.ok) throw new Error('Failed to fetch logs');
+      const data = await res.json();
+      
+      tbody.innerHTML = '';
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-history" style="text-align: center;">No activity logged yet.</td></tr>';
+        return;
+      }
+      
+      data.forEach(log => {
+        const tr = document.createElement('tr');
+        const timeStr = new Date(log.timestamp).toLocaleString();
+        
+        let actionClass = 'manual';
+        if (log.action.includes('DEDUCTION') || log.action.includes('OUT')) actionClass = 'deduction';
+        else if (log.action.includes('RECEIPT') || log.action.includes('IN')) actionClass = 'receipt';
+        
+        const qtyDiff = log.new_quantity - log.old_quantity;
+        const diffStr = qtyDiff > 0 ? `+${qtyDiff}` : `${qtyDiff}`;
+        const diffStyle = qtyDiff > 0 ? 'color:var(--accent-in);' : 'color:var(--accent-out);';
+        
+        tr.innerHTML = `
+          <td style="color:var(--muted); font-size:11px;">${timeStr}</td>
+          <td><strong>${log.product_name}</strong></td>
+          <td><span class="badge-action ${actionClass}">${log.action}</span></td>
+          <td><strong style="${diffStyle}">${diffStr}</strong></td>
+          <td><strong>${log.new_quantity}</strong></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-history" style="text-align: center; color:var(--accent-out);">Error loading logs: ${e.message}</td></tr>`;
     }
   }
 

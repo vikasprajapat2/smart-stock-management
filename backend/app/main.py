@@ -26,7 +26,8 @@ from app.models import (
     purchase_order,
     order,
     order_item,
-    notification
+    notification,
+    inventory_log
 )
 
 from fastapi.middleware.cors import CORSMiddleware
