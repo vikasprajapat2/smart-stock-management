@@ -7,6 +7,7 @@ from app.models.inventory import Inventory
 from app.models.product import Product
 from app.models.warehouse import Warehouse
 from app.models.notification import Notification
+from app.utils.auth_middleware import require_admin
 
 from app.schemas.inventory_schema import (
     InventoryCreate,
@@ -211,7 +212,8 @@ def update_inventory(
 @router.delete("/{inventory_id}")
 def delete_inventory(
     inventory_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin)
 ):
 
     inventory = db.query(Inventory).filter(
