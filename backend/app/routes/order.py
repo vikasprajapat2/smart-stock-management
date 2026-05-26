@@ -7,7 +7,6 @@ from app.models.order_item import OrderItem
 from app.models.inventory import Inventory
 from app.models.notification import Notification
 from app.models.product import Product
-from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
 
 from app.schemas.order_schema import (
     OrderCreate,
@@ -40,7 +39,8 @@ def create_order(
 ):
 
     try:
-        # CREATE MAIN ORDER BUT DO NOT COMMIT YET
+
+        # CREATE MAIN ORDER
         new_order = Order(
             customer_name=order.customer_name,
             total_amount=order.total_amount,
@@ -48,7 +48,10 @@ def create_order(
         )
 
         db.add(new_order)
-        db.flush()  # Flushes changes to generate ID without committing transaction
+
+        db.commit()
+
+        db.refresh(new_order)
 
         # PROCESS ORDER ITEMS
         for item in order.items:
@@ -59,6 +62,7 @@ def create_order(
             ).first()
 
             if not inventory:
+
                 raise HTTPException(
                     status_code=404,
                     detail=f"Inventory not found for product {item.product_id}"
@@ -66,15 +70,14 @@ def create_order(
 
             # CHECK STOCK
             if inventory.quantity < item.quantity:
+
                 raise HTTPException(
                     status_code=400,
                     detail=f"Insufficient stock for product {item.product_id}"
                 )
 
             # REDUCE STOCK
-            old_qty = inventory.quantity
             inventory.quantity -= item.quantity
-            new_qty = inventory.quantity
 
             # CREATE ORDER ITEM
             order_item = OrderItem(
@@ -86,33 +89,34 @@ def create_order(
 
             db.add(order_item)
 
-            # LOG INVENTORY CHANGE
-            log_inventory_change(
-                db=db,
-                product_id=item.product_id,
-                old_qty=old_qty,
-                new_qty=new_qty,
-                action="ORDER_DEDUCTION"
-            )
+            # LOW STOCK CHECK
+            product = db.query(Product).filter(
+                Product.id == inventory.product_id
+            ).first()
 
-            # LOW STOCK CHECK (WAREHOUSE-BASED & DEDUPLICATED)
-            check_and_trigger_low_stock_alert(
-                db=db,
-                product_id=item.product_id,
-                warehouse_id=inventory.warehouse_id,
-                quantity=new_qty
-            )
+            if inventory.quantity <= product.reorder_level:
+
+                notification = Notification(
+                    title="Low Stock Alert",
+                    message=f"{product.product_name} stock is low",
+                    type="warning"
+                )
+
+                db.add(notification)
 
         db.commit()
+
         db.refresh(new_order)
+
         return new_order
 
-    except HTTPException as he:
-        db.rollback()
-        raise he
+    except HTTPException:
+        raise
 
     except Exception as e:
+
         db.rollback()
+
         raise HTTPException(
             status_code=500,
             detail=str(e)
