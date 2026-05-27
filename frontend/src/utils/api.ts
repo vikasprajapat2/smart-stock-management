@@ -1,8 +1,58 @@
+import axios from 'axios';
+
 // Dynamically determine the base URL
 // In development: always talk to FastAPI on port 8000
 // In production (same host): use relative path ''
 const isDev = import.meta.env.DEV;
 export const API_BASE = isDev ? 'http://localhost:8000' : '';
+
+export const api = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to attach the JWT token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+// Add a response interceptor to handle 401 Unauthorized errors
+api.interceptors.response.use((response) => {
+  return response;
+}, (error) => {
+  if (error.response && error.response.status === 401) {
+    localStorage.removeItem('access_token');
+    window.dispatchEvent(new Event('auth-unauthorized'));
+  }
+  return Promise.reject(error);
+});
+
+// Authenticated fetch wrapper for other API functions
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = localStorage.getItem('access_token');
+  const headers = new Headers(options.headers || {});
+  
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  
+  const res = await fetch(url, { ...options, headers });
+  
+  if (res.status === 401) {
+    localStorage.removeItem('access_token');
+    window.dispatchEvent(new Event('auth-unauthorized'));
+  }
+  
+  return res;
+}
 
 export interface Warehouse {
   id: number;
@@ -195,7 +245,7 @@ export async function checkBackendConnection(): Promise<boolean> {
 
 // Fetch all warehouses
 export async function fetchWarehouses(): Promise<Warehouse[]> {
-  const res = await fetch(`${API_BASE}/warehouses/`);
+  const res = await fetchWithAuth(`${API_BASE}/warehouses/`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch warehouses');
@@ -205,7 +255,7 @@ export async function fetchWarehouses(): Promise<Warehouse[]> {
 
 // Fetch all categories
 export async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch(`${API_BASE}/categories/`);
+  const res = await fetchWithAuth(`${API_BASE}/categories/`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch categories');
@@ -219,7 +269,7 @@ export async function fetchProducts(search?: string): Promise<Product[]> {
   if (search) {
     url += `?search=${encodeURIComponent(search)}`;
   }
-  const res = await fetch(url);
+  const res = await fetchWithAuth(url);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch products');
@@ -229,7 +279,7 @@ export async function fetchProducts(search?: string): Promise<Product[]> {
 
 // Add a new product
 export async function createProduct(productData: ProductCreateInput): Promise<Product> {
-  const res = await fetch(`${API_BASE}/products/`, {
+  const res = await fetchWithAuth(`${API_BASE}/products/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -245,7 +295,7 @@ export async function createProduct(productData: ProductCreateInput): Promise<Pr
 
 // Submit a product barcode scan (IN/OUT)
 export async function submitProductScan(scanData: ScanRequest): Promise<ScanResponse> {
-  const res = await fetch(`${API_BASE}/products/scan`, {
+  const res = await fetchWithAuth(`${API_BASE}/products/scan`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -266,7 +316,7 @@ export async function fetchSuppliers(search?: string): Promise<Supplier[]> {
   if (search) {
     url += `?search=${encodeURIComponent(search)}`;
   }
-  const res = await fetch(url);
+  const res = await fetchWithAuth(url);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch suppliers');
@@ -275,7 +325,7 @@ export async function fetchSuppliers(search?: string): Promise<Supplier[]> {
 }
 
 export async function createSupplier(supplier: SupplierCreateInput): Promise<Supplier> {
-  const res = await fetch(`${API_BASE}/suppliers/`, {
+  const res = await fetchWithAuth(`${API_BASE}/suppliers/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(supplier)
@@ -288,7 +338,7 @@ export async function createSupplier(supplier: SupplierCreateInput): Promise<Sup
 }
 
 export async function fetchGSTDetails(gstin: string): Promise<GSTDetails> {
-  const res = await fetch(`${API_BASE}/suppliers/fetch-gst/${encodeURIComponent(gstin)}`);
+  const res = await fetchWithAuth(`${API_BASE}/suppliers/fetch-gst/${encodeURIComponent(gstin)}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to verify GST number');
@@ -297,7 +347,7 @@ export async function fetchGSTDetails(gstin: string): Promise<GSTDetails> {
 }
 
 export async function fetchSupplierHistory(id: number): Promise<any[]> {
-  const res = await fetch(`${API_BASE}/suppliers/${id}/history`);
+  const res = await fetchWithAuth(`${API_BASE}/suppliers/${id}/history`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch supplier order history');
@@ -308,7 +358,7 @@ export async function fetchSupplierHistory(id: number): Promise<any[]> {
 // ─── PURCHASE ORDERS (PROCUREMENT) ─────────────────────────
 
 export async function fetchPurchaseOrders(): Promise<PurchaseOrderResponse[]> {
-  const res = await fetch(`${API_BASE}/purchase-orders/`);
+  const res = await fetchWithAuth(`${API_BASE}/purchase-orders/`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch purchase orders');
@@ -317,7 +367,7 @@ export async function fetchPurchaseOrders(): Promise<PurchaseOrderResponse[]> {
 }
 
 export async function createPurchaseOrder(po: PurchaseOrderCreateInput): Promise<PurchaseOrderResponse> {
-  const res = await fetch(`${API_BASE}/purchase-orders/`, {
+  const res = await fetchWithAuth(`${API_BASE}/purchase-orders/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(po)
@@ -334,7 +384,7 @@ export async function updatePurchaseOrder(id: number, status: 'PENDING' | 'COMPL
   if (warehouseId !== undefined) {
     payload.warehouse_id = warehouseId;
   }
-  const res = await fetch(`${API_BASE}/purchase-orders/${id}`, {
+  const res = await fetchWithAuth(`${API_BASE}/purchase-orders/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -349,7 +399,7 @@ export async function updatePurchaseOrder(id: number, status: 'PENDING' | 'COMPL
 // ─── SALES ORDERS ──────────────────────────────────────────
 
 export async function fetchOrders(): Promise<SalesOrderResponse[]> {
-  const res = await fetch(`${API_BASE}/orders/`);
+  const res = await fetchWithAuth(`${API_BASE}/orders/`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch sales orders');
@@ -358,7 +408,7 @@ export async function fetchOrders(): Promise<SalesOrderResponse[]> {
 }
 
 export async function createOrder(order: SalesOrderCreateInput): Promise<SalesOrderResponse> {
-  const res = await fetch(`${API_BASE}/orders/`, {
+  const res = await fetchWithAuth(`${API_BASE}/orders/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(order)
@@ -373,7 +423,7 @@ export async function createOrder(order: SalesOrderCreateInput): Promise<SalesOr
 // ─── NOTIFICATIONS ─────────────────────────────────────────
 
 export async function fetchNotifications(): Promise<Notification[]> {
-  const res = await fetch(`${API_BASE}/notifications/`);
+  const res = await fetchWithAuth(`${API_BASE}/notifications/`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch notifications');
@@ -382,7 +432,7 @@ export async function fetchNotifications(): Promise<Notification[]> {
 }
 
 export async function markNotificationRead(id: number): Promise<any> {
-  const res = await fetch(`${API_BASE}/notifications/${id}/read`, {
+  const res = await fetchWithAuth(`${API_BASE}/notifications/${id}/read`, {
     method: 'PUT'
   });
   if (!res.ok) {
@@ -395,10 +445,182 @@ export async function markNotificationRead(id: number): Promise<any> {
 // ─── DASHBOARD STATS ───────────────────────────────────────
 
 export async function fetchDashboardStats(): Promise<DashboardStats> {
-  const res = await fetch(`${API_BASE}/dashboard/stats`);
+  const res = await fetchWithAuth(`${API_BASE}/dashboard/stats`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch dashboard stats');
+  }
+  return res.json();
+}
+
+// ─── USERS MANAGEMENT ───────────────────────────────────────
+
+export interface User {
+  id: number;
+  full_name: string;
+  email: string;
+  role_id: number;
+  role?: { id: number; role_name: string; description: string };
+  is_active: boolean;
+}
+
+export interface Role {
+  id: number;
+  role_name: string;
+  description: string;
+}
+
+export interface UserCreateInput {
+  full_name: string;
+  email: string;
+  password: string;
+  role_id: number;
+}
+
+export async function fetchUsers(): Promise<User[]> {
+  const res = await fetchWithAuth(`${API_BASE}/users/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch users');
+  }
+  return res.json();
+}
+
+export async function fetchCurrentUser(): Promise<User> {
+  const res = await fetchWithAuth(`${API_BASE}/users/me`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch current user');
+  }
+  return res.json();
+}
+
+export async function fetchUserById(userId: number): Promise<User> {
+  const res = await fetchWithAuth(`${API_BASE}/users/${userId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch user');
+  }
+  return res.json();
+}
+
+export async function updateUserRole(userId: number, roleId: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/users/${userId}/role?role_id=${roleId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update user role');
+  }
+  return res.json();
+}
+
+export async function deactivateUser(userId: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/users/${userId}/deactivate`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to deactivate user');
+  }
+  return res.json();
+}
+
+export async function activateUser(userId: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/users/${userId}/activate`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to activate user');
+  }
+  return res.json();
+}
+
+export async function deleteUser(userId: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/users/${userId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete user');
+  }
+  return res.json();
+}
+
+// ─── CATEGORIES MANAGEMENT ──────────────────────────────────
+
+export interface CategoryResponse {
+  id: number;
+  category_name: string;
+  description?: string;
+}
+
+export interface CategoryCreateInput {
+  category_name: string;
+  description?: string;
+}
+
+export interface CategoryUpdateInput {
+  category_name?: string;
+  description?: string;
+}
+
+export async function fetchAllCategories(): Promise<CategoryResponse[]> {
+  const res = await fetchWithAuth(`${API_BASE}/categories/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch categories');
+  }
+  return res.json();
+}
+
+export async function fetchCategoryById(id: number): Promise<CategoryResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/categories/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch category');
+  }
+  return res.json();
+}
+
+export async function createCategory(categoryData: CategoryCreateInput): Promise<CategoryResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/categories/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(categoryData)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create category');
+  }
+  return res.json();
+}
+
+export async function updateCategory(id: number, categoryData: CategoryUpdateInput): Promise<CategoryResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/categories/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(categoryData)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update category');
+  }
+  return res.json();
+}
+
+export async function deleteCategory(id: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/categories/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete category');
   }
   return res.json();
 }

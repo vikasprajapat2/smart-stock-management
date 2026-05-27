@@ -53,6 +53,13 @@ def create_order(
 
         db.refresh(new_order)
 
+        notification = Notification(
+            title="New Sales Order",
+            message=f"Order #{new_order.id} received from {new_order.customer_name} for ${new_order.total_amount}.",
+            type="info"
+        )
+        db.add(notification)
+
         # PROCESS ORDER ITEMS
         for item in order.items:
 

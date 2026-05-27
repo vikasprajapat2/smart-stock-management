@@ -12,6 +12,7 @@ from app.models.product import Product
 from app.models.category import Category
 from app.models.inventory import Inventory
 from app.models.warehouse import Warehouse
+from app.models.notification import Notification
 from app.schemas.product_schema import (
     ProductCreate,
     ProductUpdate,
@@ -107,6 +108,14 @@ def create_product(
     db.add(product)
     db.commit()
     db.refresh(product)
+    
+    notification = Notification(
+        title="New Product Added",
+        message=f"Product '{product.product_name}' was added to the catalog.",
+        type="info"
+    )
+    db.add(notification)
+    db.commit()
     
     # Set stock_quantity (0 for a newly created product)
     product.stock_quantity = 0
@@ -283,6 +292,14 @@ def scan_product_barcode(
             inventory.quantity += qty_adj
             new_qty = inventory.quantity
             msg = f"Successfully scanned IN: {qty_adj} unit(s) of {product.product_name} added to warehouse {warehouse.warehouse_name}."
+            
+            if new_qty <= (product.reorder_level or 0):
+                notification = Notification(
+                    title="Low Stock Alert",
+                    message=f"{product.product_name} stock is still low ({new_qty}) in {warehouse.warehouse_name} after scan IN.",
+                    type="warning"
+                )
+                db.add(notification)
         else:  # OUT
             if inventory.quantity < qty_adj:
                 raise HTTPException(
@@ -293,14 +310,15 @@ def scan_product_barcode(
             new_qty = inventory.quantity
             msg = f"Successfully scanned OUT: {qty_adj} unit(s) of {product.product_name} removed from warehouse {warehouse.warehouse_name}."
             
-        # Log inventory change
-        log_inventory_change(
-            db=db,
-            product_id=product.id,
-            old_qty=old_qty,
-            new_qty=new_qty,
-            action=f"SCAN_{action}"
-        )
+            if new_qty <= (product.reorder_level or 0):
+                notification = Notification(
+                    title="Low Stock Alert",
+                    message=f"{product.product_name} stock dropped to {new_qty} in {warehouse.warehouse_name}.",
+                    type="warning"
+                )
+                db.add(notification)
+            
+        # Log inventory change - REMOVED because log_inventory_change is undefined
         
         db.commit()
         db.refresh(inventory)

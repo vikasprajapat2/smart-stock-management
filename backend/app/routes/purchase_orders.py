@@ -10,6 +10,7 @@ from app.models.supplier import Supplier
 from app.models.product import Product
 from app.models.warehouse import Warehouse
 from app.models.inventory import Inventory
+from app.models.notification import Notification
 from app.schemas.purchase_order_schema import PurchaseOrderCreate, PurchaseOrderUpdate, PurchaseOrderResponse
 from app.utils.product_helpers import generate_po_number
 from app.models.inventory import Inventory
@@ -89,6 +90,14 @@ def create_purchase_order(po_in: PurchaseOrderCreate, db: Session = Depends(get_
 
     db.commit()
     db.refresh(po)
+
+    notification = Notification(
+        title="Purchase Order Created",
+        message=f"PO {po.po_number} created for {supplier.supplier_name}.",
+        type="info"
+    )
+    db.add(notification)
+    db.commit()
 
     # Populate item fields (product_name, sku) for response schema
     for item in po.items:

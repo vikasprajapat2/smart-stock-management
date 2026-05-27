@@ -11,18 +11,14 @@ import { HistoryPanel, type HistoryItem } from './components/HistoryPanel';
 import { InventoryManager } from './components/InventoryManager';
 import {
   DashboardView, WarehouseView, SuppliersView,
-  PurchaseOrdersView, OrdersView
+  PurchaseOrdersView, OrdersView, UsersView, CategoriesView
 } from './components/ERPViews';
 import { parseScanResult, type ParsedScanResult } from './utils/parser';
-import {
-  checkBackendConnection, fetchWarehouses, submitProductScan,
-  fetchNotifications
-} from './utils/api';
-import type { Warehouse as BackendWarehouse } from './utils/api';
+import { api, checkBackendConnection, fetchWarehouses, submitProductScan, fetchNotifications, markNotificationRead } from './utils/api';
+import LoginModal from './components/LoginModal';
+import type { Warehouse as BackendWarehouse, Notification as BackendNotification } from './utils/api';
 
-type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'history';
-
-
+type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -31,6 +27,7 @@ function App() {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('access_token'));
 
   // Backend Integration States
   const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
@@ -39,6 +36,8 @@ function App() {
   const [scanAction, setScanAction] = useState<'IN' | 'OUT'>('OUT');
   const [scanQuantityInput, setScanQuantityInput] = useState<string>('1');
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [notifications, setNotifications] = useState<BackendNotification[]>([]);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState<boolean>(false);
 
   // Load preferences, history, backend connectivity and warehouses
   useEffect(() => {
@@ -55,8 +54,25 @@ function App() {
     } catch (e) {
       console.error('Failed to load localStorage preferences', e);
     }
+  }, []);
 
-    const initBackend = async () => {
+  // Listen for unauthorized events to force logout
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsAuthenticated(false);
+    };
+
+    window.addEventListener('auth-unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth-unauthorized', handleUnauthorized);
+    };
+  }, []);
+
+  // Fetch initial data on mount, but only if authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const fetchInitialData = async () => {
       try {
         const connected = await checkBackendConnection();
         setIsBackendConnected(connected);
@@ -69,14 +85,15 @@ function App() {
           if (whs.length > 0) {
             setSelectedWarehouseId(whs[0].id.toString());
           }
+          setNotifications(alerts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
           setUnreadCount(alerts.filter(n => !n.is_read).length);
         }
       } catch (e) {
         console.warn('FastAPI backend connection check failed, running in local-only scanner mode:', e);
       }
     };
-    initBackend();
-  }, []);
+    fetchInitialData();
+  }, [isAuthenticated]);
 
   // Poll connection checking silently
   useEffect(() => {
@@ -91,6 +108,34 @@ function App() {
     const interval = setInterval(checkConnection, 8000);
     return () => clearInterval(interval);
   }, []);
+
+  // Poll notifications silently
+  useEffect(() => {
+    if (!isAuthenticated || !isBackendConnected) return;
+    
+    const pollNotifications = async () => {
+      try {
+        const alerts = await fetchNotifications();
+        setNotifications(alerts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+        setUnreadCount(alerts.filter(n => !n.is_read).length);
+      } catch (e) {
+        // ignore errors during background polling
+      }
+    };
+    
+    const interval = setInterval(pollNotifications, 15000); // 15 seconds
+    return () => clearInterval(interval);
+  }, [isAuthenticated, isBackendConnected]);
+
+  const handleMarkNotificationRead = async (id: number) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (e) {
+      console.error('Failed to mark notification read', e);
+    }
+  };
 
   const handleSetSoundEnabled = (enabled: boolean) => {
     setSoundEnabled(enabled);
@@ -285,6 +330,10 @@ function App() {
     setMobileSidebarOpen(false);
   };
 
+  if (!isAuthenticated) {
+    return <LoginModal onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
+
   return (
     <div className="erp-layout-container">
 
@@ -384,6 +433,22 @@ function App() {
                 <Users size={18} />
                 {!sidebarCollapsed && <span>Suppliers Directory</span>}
               </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'users' ? 'active' : ''}`}
+                onClick={() => handleTabChange('users')}
+              >
+                <Users size={18} />
+                {!sidebarCollapsed && <span>Team Management</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'categories' ? 'active' : ''}`}
+                onClick={() => handleTabChange('categories')}
+              >
+                <Layers size={18} />
+                {!sidebarCollapsed && <span>Categories Setup</span>}
+              </button>
             </>
           )}
 
@@ -395,6 +460,17 @@ function App() {
           >
             <Clock size={18} />
             {!sidebarCollapsed && <span>Scan History</span>}
+          </button>
+          
+          <button
+            className="sidebar-nav-btn"
+            onClick={() => {
+              localStorage.removeItem('access_token');
+              setIsAuthenticated(false);
+            }}
+          >
+            <ShieldCheck size={18} />
+            {!sidebarCollapsed && <span>Logout</span>}
           </button>
 
         </nav>
@@ -449,15 +525,70 @@ function App() {
               <span>{isBackendConnected ? 'FastAPI DB Connected' : 'DB Offline (Fallback Mode)'}</span>
             </div>
 
-            {/* Quick alert notifications count */}
-            {isBackendConnected && unreadCount > 0 && (
-              <div
-                className="topbar-alerts-bell"
-                onClick={() => setActiveTab('dashboard')}
-                title={`${unreadCount} low stock alerts`}
-              >
-                <Bell size={18} className="shake-anim" />
-                <span className="bell-badge">{unreadCount}</span>
+            {/* Quick alert notifications count & dropdown */}
+            {isBackendConnected && (
+              <div style={{ position: 'relative' }}>
+                <div
+                  className="topbar-alerts-bell"
+                  onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                  title={`${unreadCount} unread alerts`}
+                >
+                  <Bell size={18} className={unreadCount > 0 ? "shake-anim" : ""} />
+                  {unreadCount > 0 && <span className="bell-badge">{unreadCount}</span>}
+                </div>
+                
+                {showNotificationsDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '120%',
+                    right: 0,
+                    width: '320px',
+                    background: 'rgba(20, 20, 30, 0.95)',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    zIndex: 1000,
+                    backdropFilter: 'blur(10px)',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#fff' }}>Notifications</h4>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{unreadCount} unread</span>
+                    </div>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                      {notifications.length === 0 ? (
+                        <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No notifications yet</div>
+                      ) : (
+                        notifications.slice(0, 15).map(n => (
+                          <div 
+                            key={n.id} 
+                            onClick={() => !n.is_read && handleMarkNotificationRead(n.id)}
+                            style={{ 
+                              padding: '1rem', 
+                              borderBottom: '1px solid rgba(255,255,255,0.03)',
+                              background: n.is_read ? 'transparent' : 'rgba(139, 92, 246, 0.05)',
+                              cursor: n.is_read ? 'default' : 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.25rem',
+                              opacity: n.is_read ? 0.7 : 1,
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={(e) => { if (!n.is_read) e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)'; }}
+                            onMouseLeave={(e) => { if (!n.is_read) e.currentTarget.style.background = 'rgba(139, 92, 246, 0.05)'; }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <strong style={{ fontSize: '0.85rem', color: n.type === 'error' ? '#ef4444' : n.type === 'warning' ? '#f59e0b' : n.type === 'success' ? '#22c55e' : '#3b82f6' }}>{n.title}</strong>
+                              {!n.is_read && <div style={{ width: '8px', height: '8px', background: 'var(--accent-primary)', borderRadius: '50%', flexShrink: 0 }}></div>}
+                            </div>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>{n.message}</span>
+                            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.25rem' }}>{new Date(n.created_at).toLocaleString()}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -489,6 +620,18 @@ function App() {
 
           {activeTab === 'sales' && isBackendConnected && (
             <OrdersView />
+          )}
+
+          {activeTab === 'users' && isBackendConnected && (
+            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+              <UsersView />
+            </div>
+          )}
+
+          {activeTab === 'categories' && isBackendConnected && (
+            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+              <CategoriesView />
+            </div>
           )}
 
           {activeTab === 'inventory' && isBackendConnected && (

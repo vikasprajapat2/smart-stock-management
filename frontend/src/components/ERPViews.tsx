@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ShoppingBag, CheckCircle, AlertTriangle, 
-  Layers, Database, Landmark, Plus, Search, Loader, 
-  Trash2, Check, AlertCircle
+import {
+  ShoppingBag, CheckCircle, AlertTriangle,
+  Layers, Database, Landmark, Plus, Search, Loader,
+  Trash2, Check, AlertCircle, Users, Tag, Edit2, Lock, Unlock, X
 } from 'lucide-react';
-import { 
+import {
   fetchDashboardStats, fetchNotifications, markNotificationRead,
   fetchSuppliers, createSupplier, fetchGSTDetails,
   fetchPurchaseOrders, createPurchaseOrder, updatePurchaseOrder,
-  fetchOrders, createOrder, fetchWarehouses, fetchProducts
+  fetchOrders, createOrder, fetchWarehouses, fetchProducts,
+  fetchUsers, updateUserRole, deactivateUser, activateUser, deleteUser,
+  fetchAllCategories, createCategory, updateCategory, deleteCategory
 } from '../utils/api';
-import type { 
-  Product, Supplier, Warehouse, PurchaseOrderResponse, 
-  SalesOrderResponse, Notification, DashboardStats 
+import type {
+  Product, Supplier, Warehouse, PurchaseOrderResponse,
+  SalesOrderResponse, Notification, DashboardStats, User, Role, CategoryResponse
 } from '../utils/api';
 
 // ─── 1. DASHBOARD VIEW ──────────────────────────────────────
@@ -1346,6 +1348,558 @@ export const OrdersView: React.FC = () => {
         </div>
       )}
 
+    </div>
+  );
+};
+
+// ─── 6. USERS MANAGEMENT VIEW ───────────────────────────────
+
+export const UsersView: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [roles] = useState<Role[]>([
+    { id: 1, role_name: 'admin', description: 'System Administrator' },
+    { id: 2, role_name: 'manager', description: 'Warehouse Manager' },
+    { id: 3, role_name: 'staff', description: 'Scanning Staff' }
+  ]);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchUsers();
+      setUsers(data);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const handleChangeRole = async (userId: number, roleId: number) => {
+    try {
+      await updateUserRole(userId, roleId);
+      await loadUsers();
+      setEditingRoleId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update role');
+    }
+  };
+
+  const handleToggleStatus = async (userId: number, isActive: boolean) => {
+    try {
+      if (isActive) {
+        await deactivateUser(userId);
+      } else {
+        await activateUser(userId);
+      }
+      await loadUsers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update user status');
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+    try {
+      await deleteUser(userId);
+      await loadUsers();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete user');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
+        <Loader className="spin-anim" size={32} style={{ color: 'var(--accent-cyan)' }} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {error && (
+        <div className="glass-panel" style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px' }}>
+          <p style={{ color: '#fca5a5', fontSize: '0.9rem' }}>{error}</p>
+        </div>
+      )}
+
+      <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <Users size={20} style={{ color: 'var(--accent-cyan)' }} />
+        Team Members ({users.length})
+      </h3>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {users.length === 0 ? (
+          <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <Users size={48} style={{ margin: '0 auto 1rem', opacity: 0.15 }} />
+            <h4>No users found</h4>
+          </div>
+        ) : (
+          users.map(user => (
+            <div
+              key={user.id}
+              className="glass-panel"
+              style={{
+                padding: '1.25rem',
+                display: 'grid',
+                gridTemplateColumns: 'auto 1fr auto auto auto auto',
+                alignItems: 'center',
+                gap: '0.75rem',
+                borderLeft: `4px solid ${user.is_active ? 'var(--accent-neon)' : '#666'}`,
+                opacity: user.is_active ? 1 : 0.6
+              }}
+            >
+              <div style={{ fontSize: '1.5rem' }}>👤</div>
+              <div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{user.full_name}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.email}</div>
+              </div>
+
+              {editingRoleId === user.id ? (
+                <select
+                  value={selectedRoleId || user.role_id}
+                  onChange={(e) => setSelectedRoleId(parseInt(e.target.value))}
+                  style={{
+                    padding: '0.4rem 0.5rem',
+                    borderRadius: '4px',
+                    background: 'rgba(255,255,255,0.08)',
+                    color: '#fff',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    fontSize: '0.8rem',
+                    minWidth: '120px'
+                  }}
+                >
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id}>{r.role_name}</option>
+                  ))}
+                </select>
+              ) : (
+                <span style={{
+                  padding: '0.3rem 0.6rem',
+                  background: 'rgba(139, 92, 246, 0.15)',
+                  color: '#a78bfa',
+                  borderRadius: '4px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  textTransform: 'capitalize'
+                }}>
+                  {user.role?.role_name || 'Unknown'}
+                </span>
+              )}
+
+              {editingRoleId === user.id ? (
+                <>
+                  <button
+                    onClick={() => handleChangeRole(user.id, selectedRoleId || user.role_id)}
+                    style={{
+                      padding: '0.4rem 0.6rem',
+                      background: 'rgba(34, 197, 94, 0.15)',
+                      color: 'var(--accent-neon)',
+                      border: '1px solid rgba(34, 197, 94, 0.25)',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.7rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    <Check size={14} />
+                  </button>
+                  <button
+                    onClick={() => setEditingRoleId(null)}
+                    style={{
+                      padding: '0.4rem 0.6rem',
+                      background: 'rgba(255,255,255,0.05)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.7rem'
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setEditingRoleId(user.id);
+                    setSelectedRoleId(user.role_id);
+                  }}
+                  style={{
+                    padding: '0.4rem 0.6rem',
+                    background: 'rgba(255,255,255,0.05)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Edit2 size={14} />
+                </button>
+              )}
+
+              <button
+                onClick={() => handleToggleStatus(user.id, user.is_active)}
+                style={{
+                  padding: '0.4rem 0.6rem',
+                  background: user.is_active ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  color: user.is_active ? 'var(--accent-neon)' : '#f87171',
+                  border: user.is_active ? '1px solid rgba(34, 197, 94, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}
+              >
+                {user.is_active ? <Unlock size={14} /> : <Lock size={14} />}
+              </button>
+
+              <button
+                onClick={() => handleDeleteUser(user.id)}
+                style={{
+                  padding: '0.4rem 0.6rem',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#fca5a5',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── 7. CATEGORIES MANAGEMENT VIEW ──────────────────────────
+
+export const CategoriesView: React.FC = () => {
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [showNewForm, setShowNewForm] = useState<boolean>(false);
+  const [newCategoryName, setNewCategoryName] = useState<string>('');
+  const [newCategoryDesc, setNewCategoryDesc] = useState<string>('');
+  const [editingName, setEditingName] = useState<string>('');
+  const [editingDesc, setEditingDesc] = useState<string>('');
+
+  const loadCategories = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchAllCategories();
+      setCategories(data);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      setError('Category name is required');
+      return;
+    }
+    try {
+      await createCategory({
+        category_name: newCategoryName,
+        description: newCategoryDesc
+      });
+      setNewCategoryName('');
+      setNewCategoryDesc('');
+      setShowNewForm(false);
+      await loadCategories();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create category');
+    }
+  };
+
+  const handleUpdateCategory = async (id: number) => {
+    if (!editingName.trim()) {
+      setError('Category name is required');
+      return;
+    }
+    try {
+      await updateCategory(id, {
+        category_name: editingName,
+        description: editingDesc
+      });
+      await loadCategories();
+      setEditingId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update category');
+    }
+  };
+
+  const handleDeleteCategory = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this category?')) return;
+    try {
+      await deleteCategory(id);
+      await loadCategories();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete category');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
+        <Loader className="spin-anim" size={32} style={{ color: 'var(--accent-cyan)' }} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {error && (
+        <div className="glass-panel" style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px' }}>
+          <p style={{ color: '#fca5a5', fontSize: '0.9rem' }}>{error}</p>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Tag size={20} style={{ color: 'var(--accent-purple)' }} />
+          Product Categories ({categories.length})
+        </h3>
+        <button
+          onClick={() => setShowNewForm(!showNewForm)}
+          style={{
+            padding: '0.4rem 0.85rem',
+            background: 'rgba(139, 92, 246, 0.15)',
+            color: '#a78bfa',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem'
+          }}
+        >
+          <Plus size={14} /> New Category
+        </button>
+      </div>
+
+      {showNewForm && (
+        <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(139, 92, 246, 0.2)', background: 'rgba(139, 92, 246, 0.03)' }}>
+          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '0.75rem' }}>Add New Category</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <input
+              type="text"
+              placeholder="Category name"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              style={{
+                padding: '0.5rem 0.7rem',
+                background: 'rgba(255,255,255,0.08)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '4px',
+                fontSize: '0.85rem'
+              }}
+            />
+            <textarea
+              placeholder="Description (optional)"
+              value={newCategoryDesc}
+              onChange={(e) => setNewCategoryDesc(e.target.value)}
+              style={{
+                padding: '0.5rem 0.7rem',
+                background: 'rgba(255,255,255,0.08)',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '4px',
+                fontSize: '0.85rem',
+                minHeight: '70px',
+                resize: 'vertical'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={handleAddCategory}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'rgba(34, 197, 94, 0.15)',
+                  color: 'var(--accent-neon)',
+                  border: '1px solid rgba(34, 197, 94, 0.25)',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setShowNewForm(false);
+                  setNewCategoryName('');
+                  setNewCategoryDesc('');
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'rgba(255,255,255,0.05)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.85rem'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        {categories.length === 0 ? (
+          <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <Tag size={48} style={{ margin: '0 auto 1rem', opacity: 0.15 }} />
+            <h4>No categories found</h4>
+          </div>
+        ) : (
+          categories.map(cat => (
+            <div key={cat.id} className="glass-panel" style={{ padding: '1rem' }}>
+              {editingId === cat.id ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    style={{
+                      padding: '0.5rem 0.7rem',
+                      background: 'rgba(255,255,255,0.08)',
+                      color: '#fff',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: '4px',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                  <textarea
+                    value={editingDesc}
+                    onChange={(e) => setEditingDesc(e.target.value)}
+                    style={{
+                      padding: '0.5rem 0.7rem',
+                      background: 'rgba(255,255,255,0.08)',
+                      color: '#fff',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: '4px',
+                      fontSize: '0.85rem',
+                      minHeight: '70px'
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => handleUpdateCategory(cat.id)}
+                      style={{
+                        padding: '0.4rem 0.8rem',
+                        background: 'rgba(34, 197, 94, 0.15)',
+                        color: 'var(--accent-neon)',
+                        border: '1px solid rgba(34, 197, 94, 0.25)',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      style={{
+                        padding: '0.4rem 0.8rem',
+                        background: 'rgba(255,255,255,0.05)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{cat.category_name}</div>
+                    {cat.description && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{cat.description}</div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.4rem', marginLeft: '1rem' }}>
+                    <button
+                      onClick={() => {
+                        setEditingId(cat.id);
+                        setEditingName(cat.category_name);
+                        setEditingDesc(cat.description || '');
+                      }}
+                      style={{
+                        padding: '0.4rem',
+                        background: 'rgba(255,255,255,0.05)',
+                        color: 'var(--text-secondary)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(cat.id)}
+                      style={{
+                        padding: '0.4rem',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#fca5a5',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };

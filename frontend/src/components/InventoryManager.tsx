@@ -221,15 +221,17 @@ export const InventoryManager: React.FC = () => {
   };
 
   // Filtered products list
-  const filteredProducts = products.filter(p => {
-    const s = searchTerm.toLowerCase();
-    return (
-      p.product_name.toLowerCase().includes(s) ||
-      p.sku.toLowerCase().includes(s) ||
-      p.barcode.toLowerCase().includes(s) ||
-      (p.category?.category_name && p.category.category_name.toLowerCase().includes(s))
-    );
-  });
+  const filteredProducts = products
+    .filter(p => {
+      const s = searchTerm.toLowerCase();
+      return (
+        (p.product_name || '').toLowerCase().includes(s) ||
+        (p.sku || '').toLowerCase().includes(s) ||
+        (p.barcode || '').toLowerCase().includes(s) ||
+        (p.category?.category_name && p.category.category_name.toLowerCase().includes(s))
+      );
+    })
+    .sort((a, b) => b.id - a.id);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
