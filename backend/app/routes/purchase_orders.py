@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
@@ -15,7 +15,9 @@ from app.models.inventory import Inventory
 from app.models.notification import Notification
 from app.schemas.purchase_order_schema import PurchaseOrderCreate, PurchaseOrderUpdate, PurchaseOrderResponse
 from app.utils.product_helpers import generate_po_number
-from app.models.inventory import Inventory
+from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
+from app.utils.role_checker import require_staff, require_admin
+from app.utils.pdf_generator import generate_po_pdf
 
 router = APIRouter(
     prefix="/purchase-orders",
@@ -23,7 +25,10 @@ router = APIRouter(
 )
 
 @router.post("/", response_model=PurchaseOrderResponse, status_code=status.HTTP_201_CREATED)
-def create_purchase_order(po_in: PurchaseOrderCreate, db: Session = Depends(get_db)):
+def create_purchase_order(
+    po_in: PurchaseOrderCreate,
+    db: Session = Depends(get_db)
+):
     # Validate supplier exists
     supplier = db.query(Supplier).filter(Supplier.id == po_in.supplier_id).first()
     if not supplier:
@@ -136,7 +141,10 @@ def get_purchase_orders(
     return pos
 
 @router.get("/{id}", response_model=PurchaseOrderResponse)
-def get_purchase_order(id: int, db: Session = Depends(get_db)):
+def get_purchase_order(
+    id: int,
+    db: Session = Depends(get_db)
+):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
         raise HTTPException(
@@ -150,7 +158,11 @@ def get_purchase_order(id: int, db: Session = Depends(get_db)):
     return po
 
 @router.put("/{id}", response_model=PurchaseOrderResponse)
-def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Depends(get_db)):
+def update_purchase_order(
+    id: int,
+    po_in: PurchaseOrderUpdate,
+    db: Session = Depends(get_db)
+):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
         raise HTTPException(
@@ -174,10 +186,52 @@ def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Dep
                 detail=f"Warehouse with id {po_in.warehouse_id} does not exist."
             )
 
+    # Validate supplier if updated
+    if po_in.supplier_id is not None and po_in.supplier_id != po.supplier_id:
+        supplier = db.query(Supplier).filter(Supplier.id == po_in.supplier_id).first()
+        if not supplier:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Supplier with id {po_in.supplier_id} does not exist."
+            )
+
     old_status = po.status
     
-    # Update fields
-    update_data = po_in.model_dump(exclude_unset=True)
+    # Process items update if provided
+    if po_in.items is not None:
+        if po.status == "COMPLETED":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot modify items of a COMPLETED purchase order."
+            )
+            
+        # Validate that all products exist
+        for item in po_in.items:
+            product = db.query(Product).filter(Product.id == item.product_id).first()
+            if not product:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Product with id {item.product_id} does not exist."
+                )
+                
+        # Delete old items
+        db.query(PurchaseOrderItem).filter(PurchaseOrderItem.purchase_order_id == po.id).delete()
+        
+        # Add new items
+        for item in po_in.items:
+            po_item = PurchaseOrderItem(
+                purchase_order_id=po.id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                unit_price=item.unit_price
+            )
+            db.add(po_item)
+            
+        # Recalculate total amount
+        po.total_amount = sum(item.quantity * item.unit_price for item in po_in.items)
+
+    # Update generic fields (excluding items)
+    update_data = po_in.model_dump(exclude_unset=True, exclude={"items"})
     for key, value in update_data.items():
         setattr(po, key, value)
         
@@ -219,7 +273,10 @@ def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Dep
     return po
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_purchase_order(id: int, db: Session = Depends(get_db)):
+def delete_purchase_order(
+    id: int,
+    db: Session = Depends(get_db)
+):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
         raise HTTPException(
@@ -236,6 +293,30 @@ def delete_purchase_order(id: int, db: Session = Depends(get_db)):
     db.delete(po)
     db.commit()
     return None
+@router.get("/{id}/pdf")
+def get_purchase_order_pdf(
+    id: int,
+    db: Session = Depends(get_db)
+):
+    po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
+    if not po:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Purchase order with id {id} not found."
+        )
+        
+    try:
+        pdf_bytes = generate_po_pdf(po)
+        headers = {
+            "Content-Disposition": f'inline; filename="PO_{po.po_number}.pdf"'
+        }
+        return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating PDF: {str(e)}"
+        )
+
 # RECEIVE PURCHASE ORDER
 @router.put("/{po_id}/receive")
 def receive_purchase_order(
