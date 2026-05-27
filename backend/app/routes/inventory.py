@@ -43,7 +43,8 @@ def get_db():
 @router.post("/", response_model=InventoryResponse)
 def create_inventory(
     inventory: InventoryCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_staff)
 ):
 
     try:
@@ -194,7 +195,8 @@ def get_single_inventory(
 def update_inventory(
     inventory_id: int,
     updated_data: InventoryCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_staff)
 ):
 
     try:

@@ -17,6 +17,7 @@ from app.schemas.product_schema import (
 )
 from app.utils.product_helpers import generate_sku, generate_barcode
 from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
+from app.utils.role_checker import require_admin, require_staff
 
 router = APIRouter(
     prefix="/products",
@@ -28,7 +29,11 @@ def get_product_stock(db: Session, product_id: int) -> int:
     return qty if qty is not None else 0
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-def create_product(product_in: ProductCreate, db: Session = Depends(get_db)):
+def create_product(
+    product_in: ProductCreate, 
+    db: Session = Depends(get_db),
+    current_user = Depends(require_staff)
+):
     # Validate category if provided
     category_name = None
     if product_in.category_id:
@@ -190,7 +195,11 @@ def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get
     return product
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product(id: int, db: Session = Depends(get_db)):
+def delete_product(
+    id: int, 
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin)
+):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
         raise HTTPException(

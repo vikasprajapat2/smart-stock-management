@@ -63,7 +63,7 @@ def register(
         full_name=user.full_name,
         email=user.email,
         password_hash=hash_password(user.password),
-        role_id=user.role_id
+        role=user.role.upper()
     )
 
     db.add(new_user)
@@ -102,9 +102,9 @@ def login(
             detail="Invalid password"
         )
 
-    token = create_access_token({
-        "user_id": db_user.id,
-        "role": db_user.role.role_name
+    token = create_access_token(data={
+        "sub": db_user.email,
+        "role": db_user.role
     })
 
     return {

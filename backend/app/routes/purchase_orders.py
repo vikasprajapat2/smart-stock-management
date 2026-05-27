@@ -13,6 +13,7 @@ from app.models.inventory import Inventory
 from app.schemas.purchase_order_schema import PurchaseOrderCreate, PurchaseOrderUpdate, PurchaseOrderResponse
 from app.utils.product_helpers import generate_po_number
 from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
+from app.utils.role_checker import require_manager
 
 router = APIRouter(
     prefix="/purchase-orders",
@@ -139,7 +140,12 @@ def get_purchase_order(id: int, db: Session = Depends(get_db)):
     return po
 
 @router.put("/{id}", response_model=PurchaseOrderResponse)
-def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Depends(get_db)):
+def update_purchase_order(
+    id: int, 
+    po_in: PurchaseOrderUpdate, 
+    db: Session = Depends(get_db),
+    current_user = Depends(require_manager)
+):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
         raise HTTPException(
