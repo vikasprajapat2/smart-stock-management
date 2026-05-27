@@ -93,7 +93,6 @@ def export_products(
 # ==============================
 # IMPORT PRODUCTS
 # ==============================
-
 @router.post("/import")
 def import_products(
     file: UploadFile = File(...),
@@ -101,20 +100,27 @@ def import_products(
 ):
 
     df = pd.read_excel(file.file)
-    df = df.fillna("")
 
     imported = 0
 
     for _, row in df.iterrows():
+
         product = Product(
-            product_name=str(row["product_name"]),
-            selling_price=float(row["selling_price"] or 0),
-            reorder_level=int(float(row["reorder_level"] or 0)),
-            unit=str(row["unit"] or "pcs"),
+
+            product_name=str(row.get("product_name", "")),
+
+            selling_price=float(row.get("selling_price", 0) or 0),
+
+            reorder_level=int(float(row.get("reorder_level", 0) or 0)),
+
+            unit=str(row.get("unit", "pcs") or "pcs"),
+
+            sku=None,
+
+            barcode=None,
+
             is_active=True
         )
-
-        
 
         db.add(product)
 
