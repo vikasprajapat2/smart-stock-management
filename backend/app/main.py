@@ -17,8 +17,6 @@ from app.models.role import Role
 from app.models.user import User
 from app.routes.auth import router as auth_router
 import app.models
-from app.routes.users import router as users_router
-from app.routes.product_excel import router as product_excel_router
 
 # Import all models to ensure they are registered on the metadata
 from app.models import (
@@ -32,12 +30,31 @@ from app.models import (
     purchase_order,
     order,
     order_item,
-    notification
+    notification,
+    inventory_log
 )
 
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 # Auto-create tables in development database
+# Run simple migration to add 'role' column to 'users' if it doesn't exist
+from sqlalchemy import inspect
+
+def run_migrations():
+    try:
+        inspector = inspect(engine)
+        if "users" in inspector.get_table_names():
+            columns = [col["name"] for col in inspector.get_columns("users")]
+            if "role" not in columns:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'STAFF'"))
+                    conn.commit()
+                    print("Migration: Added role column to users table.")
+    except Exception as e:
+        print(f"Migration error: {e}")
+
+run_migrations()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -52,7 +69,6 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition"]
 )
 
 # Mount static files directory
@@ -66,36 +82,10 @@ def seed_database():
     from app.models.warehouse import Warehouse
     from app.models.product import Product
     from app.models.inventory import Inventory
-    from app.models.role import Role
-    from app.models.user import User
     from decimal import Decimal
 
     db = SessionLocal()
     try:
-        # Seed Roles
-        if db.query(Role).count() == 0:
-            roles = [
-                Role(role_name="admin", description="System Administrator"),
-                Role(role_name="manager", description="Warehouse Manager"),
-                Role(role_name="staff", description="Scanning Staff")
-            ]
-            db.add_all(roles)
-            db.commit()
-
-        # Seed Admin User
-        if db.query(User).count() == 0:
-            admin_role = db.query(Role).filter(Role.role_name == "admin").first()
-            if admin_role:
-                admin_user = User(
-                    full_name="System Admin",
-                    email="admin@gmail.com",
-                    password_hash="123456",  # plaintext for dev seeding, usually hashed
-                    role_id=admin_role.id,
-                    is_active=True
-                )
-                db.add(admin_user)
-                db.commit()
-
         # Check if categories exist, if not seed some
         if db.query(Category).count() == 0:
             cats = [
@@ -162,6 +152,3 @@ app.include_router(
     tags=["Notifications"]
 )
 app.include_router(dashboard_router)
-app.include_router(users_router)
-app.include_router(purchase_order_router)
-app.include_router(product_excel_router)

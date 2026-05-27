@@ -2,21 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import List, Optional
-from app.utils.role_checker import (
-    require_admin,
-    require_staff
-)
-from fastapi import UploadFile, File
-from fastapi.responses import StreamingResponse
-from io import BytesIO
-import pandas as pd
 
 from app.database import get_db
 from app.models.product import Product
 from app.models.category import Category
 from app.models.inventory import Inventory
 from app.models.warehouse import Warehouse
-from app.models.notification import Notification
 from app.schemas.product_schema import (
     ProductCreate,
     ProductUpdate,
@@ -25,6 +16,8 @@ from app.schemas.product_schema import (
     ProductScanResponse
 )
 from app.utils.product_helpers import generate_sku, generate_barcode
+from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
+from app.utils.role_checker import require_admin, require_staff
 
 router = APIRouter(
     prefix="/products",
@@ -37,9 +30,9 @@ def get_product_stock(db: Session, product_id: int) -> int:
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 def create_product(
-    product_in: ProductCreate,
+    product_in: ProductCreate, 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
+    current_user = Depends(require_staff)
 ):
     # Validate category if provided
     category_name = None
@@ -113,14 +106,6 @@ def create_product(
     db.commit()
     db.refresh(product)
     
-    notification = Notification(
-        title="New Product Added",
-        message=f"Product '{product.product_name}' was added to the catalog.",
-        type="info"
-    )
-    db.add(notification)
-    db.commit()
-    
     # Set stock_quantity (0 for a newly created product)
     product.stock_quantity = 0
     return product
@@ -151,101 +136,6 @@ def get_products(
         product.stock_quantity = get_product_stock(db, product.id)
         
     return products
-# DOWNLOAD TEMPLATE
-@router.get("/template")
-def download_product_template():
-
-    data = {
-        "product_name": ["MacBook Pro"],
-        "selling_price": [120000],
-        "reorder_level": [5],
-        "unit": ["pcs"]
-    }
-
-    df = pd.DataFrame(data)
-
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False)
-
-    output.seek(0)
-
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": "attachment; filename=product_template.xlsx"
-        }
-    )
-
-
-# EXPORT PRODUCTS
-@router.get("/export")
-def export_products(
-    db: Session = Depends(get_db)
-):
-
-    products = db.query(Product).all()
-
-    data = []
-
-    for product in products:
-
-        data.append({
-            "id": product.id,
-            "product_name": product.product_name,
-            "sku": product.sku,
-            "barcode": product.barcode,
-            "selling_price": float(product.selling_price) if product.selling_price else 0,
-            "reorder_level": product.reorder_level,
-            "unit": product.unit
-        })
-
-    df = pd.DataFrame(data)
-
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False)
-
-    output.seek(0)
-
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": "attachment; filename=products.xlsx"
-        }
-    )
-
-
-# IMPORT PRODUCTS
-@router.post("/import")
-def import_products(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
-
-    df = pd.read_excel(file.file)
-
-    for _, row in df.iterrows():
-
-        product = Product(
-            product_name=row["product_name"],
-            selling_price=row["selling_price"],
-            reorder_level=row["reorder_level"],
-            unit=row["unit"],
-            is_active=True
-        )
-
-        db.add(product)
-
-    db.commit()
-
-    return {
-        "message": "Products imported successfully"
-    }
 
 @router.get("/{id}", response_model=ProductResponse)
 def get_product(id: int, db: Session = Depends(get_db)):
@@ -259,12 +149,7 @@ def get_product(id: int, db: Session = Depends(get_db)):
     return product
 
 @router.put("/{id}", response_model=ProductResponse)
-def update_product(
-    id: int,
-    product_in: ProductUpdate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
-):
+def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
         raise HTTPException(
@@ -311,9 +196,9 @@ def update_product(
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(
-    id: int,
+    id: int, 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
+    current_user = Depends(require_admin)
 ):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
@@ -330,11 +215,7 @@ def delete_product(
 
 
 @router.post("/scan", response_model=ProductScanResponse)
-def scan_product_barcode(
-    scan_in: ProductScanRequest,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
-):
+def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_db)):
     try:
         # 1. Validate action value (must be IN or OUT)
         action = scan_in.action.upper().strip()
@@ -391,14 +272,6 @@ def scan_product_barcode(
             inventory.quantity += qty_adj
             new_qty = inventory.quantity
             msg = f"Successfully scanned IN: {qty_adj} unit(s) of {product.product_name} added to warehouse {warehouse.warehouse_name}."
-            
-            if new_qty <= (product.reorder_level or 0):
-                notification = Notification(
-                    title="Low Stock Alert",
-                    message=f"{product.product_name} stock is still low ({new_qty}) in {warehouse.warehouse_name} after scan IN.",
-                    type="warning"
-                )
-                db.add(notification)
         else:  # OUT
             if inventory.quantity < qty_adj:
                 raise HTTPException(
@@ -409,16 +282,23 @@ def scan_product_barcode(
             new_qty = inventory.quantity
             msg = f"Successfully scanned OUT: {qty_adj} unit(s) of {product.product_name} removed from warehouse {warehouse.warehouse_name}."
             
-            if new_qty <= (product.reorder_level or 0):
-                notification = Notification(
-                    title="Low Stock Alert",
-                    message=f"{product.product_name} stock dropped to {new_qty} in {warehouse.warehouse_name}.",
-                    type="warning"
-                )
-                db.add(notification)
-            
-        # Log inventory change - REMOVED because log_inventory_change is undefined
-        
+        # Log inventory change
+        log_inventory_change(
+            db=db,
+            product_id=product.id,
+            old_qty=old_qty,
+            new_qty=new_qty,
+            action=f"SCAN_{action}"
+        )
+
+        # Low stock check (warehouse-based & deduplicated)
+        check_and_trigger_low_stock_alert(
+            db=db,
+            product_id=product.id,
+            warehouse_id=warehouse.id,
+            quantity=new_qty
+        )
+
         db.commit()
         db.refresh(inventory)
         
@@ -431,13 +311,13 @@ def scan_product_barcode(
             "action": action,
             "message": msg
         }
-    except HTTPException:
+    except HTTPException as he:
         db.rollback()
-        raise
+        raise he
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while scanning: {str(e)}"
+            detail=str(e)
         )
 
