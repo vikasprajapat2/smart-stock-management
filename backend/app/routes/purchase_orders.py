@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
 from datetime import datetime
+from app.models.inventory import Inventory
+from fastapi import HTTPException
 
 from app.database import get_db
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
@@ -10,6 +12,7 @@ from app.models.supplier import Supplier
 from app.models.product import Product
 from app.models.warehouse import Warehouse
 from app.models.inventory import Inventory
+from app.models.notification import Notification
 from app.schemas.purchase_order_schema import PurchaseOrderCreate, PurchaseOrderUpdate, PurchaseOrderResponse
 from app.utils.product_helpers import generate_po_number
 from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
@@ -94,6 +97,14 @@ def create_purchase_order(
 
     db.commit()
     db.refresh(po)
+
+    notification = Notification(
+        title="Purchase Order Created",
+        message=f"PO {po.po_number} created for {supplier.supplier_name}.",
+        type="info"
+    )
+    db.add(notification)
+    db.commit()
 
     # Populate item fields (product_name, sku) for response schema
     for item in po.items:
@@ -224,67 +235,36 @@ def update_purchase_order(
     for key, value in update_data.items():
         setattr(po, key, value)
         
-    try:
-        # Check if we are transitioning to COMPLETED
-        if po.status == "COMPLETED" and old_status != "COMPLETED":
-            # Must have warehouse_id to update inventory
-            effective_warehouse_id = po_in.warehouse_id if po_in.warehouse_id is not None else po.warehouse_id
-            if effective_warehouse_id is None:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Purchase order must be assigned to a warehouse before it can be COMPLETED."
-                )
-                
-            # Process items to update/create inventory records
-            for item in po.items:
-                inventory_record = db.query(Inventory).filter(
-                    Inventory.product_id == item.product_id,
-                    Inventory.warehouse_id == effective_warehouse_id
-                ).first()
-                
-                if inventory_record:
-                    old_qty = inventory_record.quantity
-                    inventory_record.quantity += item.quantity
-                    new_qty = inventory_record.quantity
-                else:
-                    old_qty = 0
-                    new_inventory = Inventory(
-                        product_id=item.product_id,
-                        warehouse_id=effective_warehouse_id,
-                        quantity=item.quantity,
-                        quantity_reserved=0
-                    )
-                    db.add(new_inventory)
-                    new_qty = item.quantity
-
-                # Log inventory change
-                log_inventory_change(
-                    db=db,
-                    product_id=item.product_id,
-                    old_qty=old_qty,
-                    new_qty=new_qty,
-                    action="PO_RECEIPT"
-                )
-
-                # Low stock check (warehouse-based & deduplicated)
-                check_and_trigger_low_stock_alert(
-                    db=db,
+    # Check if we are transitioning to COMPLETED
+    if po.status == "COMPLETED" and old_status != "COMPLETED":
+        # Must have warehouse_id to update inventory
+        effective_warehouse_id = po_in.warehouse_id if po_in.warehouse_id is not None else po.warehouse_id
+        if effective_warehouse_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Purchase order must be assigned to a warehouse before it can be COMPLETED."
+            )
+            
+        # Process items to update/create inventory records
+        for item in po.items:
+            inventory_record = db.query(Inventory).filter(
+                Inventory.product_id == item.product_id,
+                Inventory.warehouse_id == effective_warehouse_id
+            ).first()
+            
+            if inventory_record:
+                inventory_record.quantity += item.quantity
+            else:
+                new_inventory = Inventory(
                     product_id=item.product_id,
                     warehouse_id=effective_warehouse_id,
-                    quantity=new_qty
+                    quantity=item.quantity,
+                    quantity_reserved=0
                 )
+                db.add(new_inventory)
 
-        db.commit()
-        db.refresh(po)
-    except HTTPException as he:
-        db.rollback()
-        raise he
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+    db.commit()
+    db.refresh(po)
     
     for item in po.items:
         item.product_name = item.product.product_name if item.product else None
@@ -313,8 +293,6 @@ def delete_purchase_order(
     db.delete(po)
     db.commit()
     return None
-
-
 @router.get("/{id}/pdf")
 def get_purchase_order_pdf(
     id: int,
@@ -338,3 +316,56 @@ def get_purchase_order_pdf(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating PDF: {str(e)}"
         )
+
+# RECEIVE PURCHASE ORDER
+@router.put("/{po_id}/receive")
+def receive_purchase_order(
+    po_id: int,
+    db: Session = Depends(get_db)
+):
+
+    po = db.query(PurchaseOrder).filter(
+        PurchaseOrder.id == po_id
+    ).first()
+
+    if not po:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found"
+        )
+
+    if po.status == "RECEIVED":
+        raise HTTPException(
+            status_code=400,
+            detail="Purchase order already received"
+        )
+
+    for item in po.items:
+
+        inventory = db.query(Inventory).filter(
+            Inventory.product_id == item.product_id,
+            Inventory.warehouse_id == po.warehouse_id
+        ).first()
+
+        if inventory:
+
+            inventory.quantity += item.quantity
+
+        else:
+
+            inventory = Inventory(
+                product_id=item.product_id,
+                warehouse_id=po.warehouse_id,
+                quantity=item.quantity,
+                quantity_reserved=0
+            )
+
+            db.add(inventory)
+
+    po.status = "RECEIVED"
+
+    db.commit()
+
+    return {
+        "message": "Purchase order received successfully"
+    }
