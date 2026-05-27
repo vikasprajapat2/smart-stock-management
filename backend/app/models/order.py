@@ -1,7 +1,15 @@
-﻿from sqlalchemy import Column, Integer, String, DECIMAL, TIMESTAMP
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DECIMAL,
+    TIMESTAMP
+)
+
 from sqlalchemy.sql import func
 
 from app.database import Base
+
 
 class Order(Base):
 
@@ -11,7 +19,7 @@ class Order(Base):
 
     customer_name = Column(String(100))
 
-    total_amount = Column(DECIMAL(10, 2))
+    total_amount = Column(DECIMAL(10,2))
 
     status = Column(String(50))
 
