@@ -1,4 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    UploadFile,
+    File
+)
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import List, Optional
@@ -6,11 +13,7 @@ from app.utils.role_checker import (
     require_admin,
     require_staff
 )
-from fastapi import UploadFile, File
-from fastapi.responses import StreamingResponse
-from io import BytesIO
 import pandas as pd
-
 from app.database import get_db
 from app.models.product import Product
 from app.models.category import Category
@@ -25,6 +28,9 @@ from app.schemas.product_schema import (
 )
 from app.utils.product_helpers import generate_sku, generate_barcode
 from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
+from app.utils.role_checker import require_admin, require_staff
+from io import BytesIO
+from fastapi.responses import StreamingResponse
 
 router = APIRouter(
     prefix="/products",
@@ -37,9 +43,9 @@ def get_product_stock(db: Session, product_id: int) -> int:
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 def create_product(
-    product_in: ProductCreate,
+    product_in: ProductCreate, 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
+    current_user = Depends(require_staff)
 ):
     # Validate category if provided
     category_name = None
@@ -251,12 +257,7 @@ def get_product(id: int, db: Session = Depends(get_db)):
     return product
 
 @router.put("/{id}", response_model=ProductResponse)
-def update_product(
-    id: int,
-    product_in: ProductUpdate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
-):
+def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
         raise HTTPException(
@@ -303,9 +304,9 @@ def update_product(
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(
-    id: int,
+    id: int, 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
+    current_user = Depends(require_admin)
 ):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
@@ -322,11 +323,7 @@ def delete_product(
 
 
 @router.post("/scan", response_model=ProductScanResponse)
-def scan_product_barcode(
-    scan_in: ProductScanRequest,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
-):
+def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_db)):
     try:
         # 1. Validate action value (must be IN or OUT)
         action = scan_in.action.upper().strip()

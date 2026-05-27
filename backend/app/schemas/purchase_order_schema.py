@@ -37,7 +37,9 @@ class PurchaseOrderCreate(PurchaseOrderBase):
 class PurchaseOrderUpdate(BaseModel):
     status: Optional[str] = None
     warehouse_id: Optional[int] = None
+    supplier_id: Optional[int] = None
     delivery_date: Optional[datetime] = None
+    items: Optional[List[PurchaseOrderItemCreate]] = None
 
 
 class PurchaseOrderResponse(BaseModel):

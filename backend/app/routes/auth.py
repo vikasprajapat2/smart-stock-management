@@ -2,18 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.database import SessionLocal
+from app.database import get_db
 
 from app.models.user import User
 
 from app.schemas.user_schema import (
-    UserCreate,
-    UserLogin
+    UserCreate
 )
 
-from app.utils.auth import (
-    hash_password,
+from app.auth.security import (
     verify_password,
+    hash_password
+)
+
+from app.auth.jwt_handler import (
     create_access_token
 )
 
@@ -23,16 +25,9 @@ router = APIRouter(
 )
 
 
-def get_db():
-
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
-
+# ==============================
+# TEST ROUTE
+# ==============================
 
 @router.get("/")
 def test_auth():
@@ -41,6 +36,10 @@ def test_auth():
         "message": "Auth working"
     }
 
+
+# ==============================
+# REGISTER
+# ==============================
 
 @router.post("/register")
 def register(
@@ -63,17 +62,23 @@ def register(
         full_name=user.full_name,
         email=user.email,
         password_hash=hash_password(user.password),
-        role_id=user.role_id
+        role=user.role.upper()
     )
 
     db.add(new_user)
 
     db.commit()
 
+    db.refresh(new_user)
+
     return {
         "message": "User created successfully"
     }
 
+
+# ==============================
+# LOGIN
+# ==============================
 
 @router.post("/login")
 def login(
@@ -102,10 +107,12 @@ def login(
             detail="Invalid password"
         )
 
-    token = create_access_token({
-        "user_id": db_user.id,
-        "role": db_user.role.role_name
-    })
+    token = create_access_token(
+        data={
+            "sub": db_user.email,
+            "role": db_user.role
+        }
+    )
 
     return {
         "access_token": token,

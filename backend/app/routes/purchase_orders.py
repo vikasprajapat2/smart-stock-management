@@ -3,8 +3,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
 from datetime import datetime
-from app.models.inventory import Inventory
-from fastapi import HTTPException
 
 from app.database import get_db
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
@@ -15,12 +13,11 @@ from app.models.inventory import Inventory
 from app.schemas.purchase_order_schema import PurchaseOrderCreate, PurchaseOrderUpdate, PurchaseOrderResponse
 from app.utils.product_helpers import generate_po_number
 from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
-from app.schemas.purchase_order_schema import (
-    PurchaseOrderCreate,
-    PurchaseOrderResponse,
-    PurchaseOrderUpdate
-)
-from app.models.warehouse import Warehouse
+from app.utils.role_checker import require_manager
+from fastapi.responses import FileResponse
+from reportlab.pdfgen import canvas
+import os
+
 router = APIRouter(
     prefix="/purchase-orders",
     tags=["Purchase Orders"]
@@ -146,7 +143,12 @@ def get_purchase_order(id: int, db: Session = Depends(get_db)):
     return po
 
 @router.put("/{id}", response_model=PurchaseOrderResponse)
-def update_purchase_order(id: int, po_in: PurchaseOrderUpdate, db: Session = Depends(get_db)):
+def update_purchase_order(
+    id: int, 
+    po_in: PurchaseOrderUpdate, 
+    db: Session = Depends(get_db),
+    current_user = Depends(require_manager)
+):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
         raise HTTPException(
@@ -263,55 +265,114 @@ def delete_purchase_order(id: int, db: Session = Depends(get_db)):
     db.delete(po)
     db.commit()
     return None
-# RECEIVE PURCHASE ORDER
 @router.put("/{po_id}/receive")
 def receive_purchase_order(
     po_id: int,
     db: Session = Depends(get_db)
 ):
 
-    po = db.query(PurchaseOrder).filter(
+    purchase_order = db.query(PurchaseOrder).filter(
         PurchaseOrder.id == po_id
     ).first()
 
-    if not po:
+    if not purchase_order:
         raise HTTPException(
             status_code=404,
             detail="Purchase order not found"
         )
 
-    if po.status == "RECEIVED":
+    if purchase_order.status == "RECEIVED":
         raise HTTPException(
             status_code=400,
             detail="Purchase order already received"
         )
 
-    for item in po.items:
+    for item in purchase_order.items:
 
         inventory = db.query(Inventory).filter(
             Inventory.product_id == item.product_id,
-            Inventory.warehouse_id == po.warehouse_id
+            Inventory.warehouse_id == purchase_order.warehouse_id
         ).first()
 
         if inventory:
 
+            old_qty = inventory.quantity
+
             inventory.quantity += item.quantity
+
+            new_qty = inventory.quantity
 
         else:
 
+            old_qty = 0
+
             inventory = Inventory(
                 product_id=item.product_id,
-                warehouse_id=po.warehouse_id,
+                warehouse_id=purchase_order.warehouse_id,
                 quantity=item.quantity,
                 quantity_reserved=0
             )
 
             db.add(inventory)
 
-    po.status = "RECEIVED"
+            new_qty = item.quantity
+
+        log_inventory_change(
+            db=db,
+            product_id=item.product_id,
+            old_qty=old_qty,
+            new_qty=new_qty,
+            action="PO_RECEIPT"
+        )
+
+    purchase_order.status = "RECEIVED"
 
     db.commit()
 
     return {
         "message": "Purchase order received successfully"
     }
+
+@router.get("/{id}/pdf")
+def get_purchase_order_pdf(
+    id: int,
+    db: Session = Depends(get_db)
+):
+
+    purchase_order = db.query(PurchaseOrder).filter(
+        PurchaseOrder.id == id
+    ).first()
+
+    if not purchase_order:
+        raise HTTPException(
+            status_code=404,
+            detail="Purchase order not found"
+        )
+
+    pdf_path = f"purchase_order_{id}.pdf"
+
+    c = canvas.Canvas(pdf_path)
+
+    c.drawString(100, 800, f"Purchase Order: {purchase_order.po_number}")
+    c.drawString(100, 780, f"Status: {purchase_order.status}")
+    c.drawString(100, 760, f"Total Amount: {purchase_order.total_amount}")
+
+    y = 720
+
+    for item in purchase_order.items:
+
+        c.drawString(
+            100,
+            y,
+            f"Product ID: {item.product_id} | Qty: {item.quantity}"
+        )
+
+        y -= 20
+
+    c.save()
+
+    return FileResponse(
+        path=pdf_path,
+        filename=pdf_path,
+        media_type='application/pdf'
+    )

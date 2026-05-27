@@ -17,7 +17,8 @@ from app.models.role import Role
 from app.models.user import User
 import app.models
 from app.routes.users import router as users_router
-from app.routes.product_excel import router as product_excel_router
+from app.routes.purchase_orders import router as purchase_order_router
+from app.models import inventory_log
 
 # Import all models to ensure they are registered on the metadata
 from app.models import (
@@ -36,8 +37,26 @@ from app.models import (
 )
 
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 # Auto-create tables in development database
+# Run simple migration to add 'role' column to 'users' if it doesn't exist
+from sqlalchemy import inspect
+
+def run_migrations():
+    try:
+        inspector = inspect(engine)
+        if "users" in inspector.get_table_names():
+            columns = [col["name"] for col in inspector.get_columns("users")]
+            if "role" not in columns:
+                with engine.connect() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'STAFF'"))
+                    conn.commit()
+                    print("Migration: Added role column to users table.")
+    except Exception as e:
+        print(f"Migration error: {e}")
+
+run_migrations()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -135,5 +154,6 @@ app.include_router(
     tags=["Notifications"]
 )
 app.include_router(dashboard_router)
+app.include_router(auth_router)
 app.include_router(users_router)
-app.include_router(product_excel_router)
+app.include_router(purchase_order_router)
