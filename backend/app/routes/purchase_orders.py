@@ -24,8 +24,7 @@ router = APIRouter(
 @router.post("/", response_model=PurchaseOrderResponse, status_code=status.HTTP_201_CREATED)
 def create_purchase_order(
     po_in: PurchaseOrderCreate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
+    db: Session = Depends(get_db)
 ):
     # Validate supplier exists
     supplier = db.query(Supplier).filter(Supplier.id == po_in.supplier_id).first()
@@ -108,8 +107,7 @@ def get_purchase_orders(
     supplier_id: Optional[int] = None,
     status: Optional[str] = None,
     search: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
+    db: Session = Depends(get_db)
 ):
     query = db.query(PurchaseOrder)
     
@@ -134,8 +132,7 @@ def get_purchase_orders(
 @router.get("/{id}", response_model=PurchaseOrderResponse)
 def get_purchase_order(
     id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
+    db: Session = Depends(get_db)
 ):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
@@ -153,8 +150,7 @@ def get_purchase_order(
 def update_purchase_order(
     id: int,
     po_in: PurchaseOrderUpdate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
+    db: Session = Depends(get_db)
 ):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
@@ -299,8 +295,7 @@ def update_purchase_order(
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_purchase_order(
     id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_admin)
+    db: Session = Depends(get_db)
 ):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
@@ -323,8 +318,7 @@ def delete_purchase_order(
 @router.get("/{id}/pdf")
 def get_purchase_order_pdf(
     id: int,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(require_staff)
+    db: Session = Depends(get_db)
 ):
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == id).first()
     if not po:
@@ -336,7 +330,7 @@ def get_purchase_order_pdf(
     try:
         pdf_bytes = generate_po_pdf(po)
         headers = {
-            "Content-Disposition": f'attachment; filename="PO_{po.po_number}.pdf"'
+            "Content-Disposition": f'inline; filename="PO_{po.po_number}.pdf"'
         }
         return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
     except Exception as e:
