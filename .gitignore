@@ -5,3 +5,5 @@ __pycache__/
 .venv/
 test.db
 mise.toml
+node_modules/
+frontend_old/node_modules/
