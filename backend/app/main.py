@@ -24,6 +24,7 @@ from app.routes.users import router as users_router
 from app.routes.boms import router as bom_router
 from app.routes.production_orders import router as production_order_router
 from app.routes.purchase_requests import router as purchase_request_router
+from app.routes import grn
 
 # IMPORT ALL MODELS
 from app.models import (
@@ -291,3 +292,4 @@ app.include_router(bom_router)
 app.include_router(production_order_router)
 
 app.include_router(purchase_request_router)
+app.include_router(grn.router)
