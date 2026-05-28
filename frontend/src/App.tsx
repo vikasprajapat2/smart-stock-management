@@ -652,25 +652,25 @@ function App() {
           )}
 
           {activeTab === 'users' && isBackendConnected && (
-            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
               <UsersView />
             </div>
           )}
 
           {activeTab === 'categories' && isBackendConnected && (
-            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
               <CategoriesView />
             </div>
           )}
 
           {activeTab === 'inventory' && isBackendConnected && (
-            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
               <InventoryManager />
             </div>
           )}
 
           {activeTab === 'inventoryRecords' && isBackendConnected && (
-            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
               <InventoryRecordsView />
             </div>
           )}
@@ -1130,6 +1130,7 @@ function App() {
           padding: 2rem;
           display: flex;
           flex-direction: column;
+          overflow-y: auto;
           background-image: radial-gradient(ellipse at 40% 0%, rgba(6, 182, 212, 0.04) 0%, transparent 60%),
                             radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.03) 0%, transparent 60%);
         }
