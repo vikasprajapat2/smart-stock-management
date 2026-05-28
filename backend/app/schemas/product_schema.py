@@ -17,7 +17,7 @@ class ProductBase(BaseModel):
 
     selling_price: Decimal = Field(..., ge=0)
 
-    reorder_level: int = Field(default=0, ge=0)
+    reorder_level: Optional[int] = Field(default=0, ge=0)
 
     unit: str = Field(default="pcs", min_length=1)
 
