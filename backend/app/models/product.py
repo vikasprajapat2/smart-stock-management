@@ -22,17 +22,17 @@ class Product(Base):
 
     product_name = Column(String(100), nullable=False)
 
-    sku = Column(String(100), unique=True)
+    sku = Column(String(100), unique=True, nullable=False)
 
-    barcode = Column(String(100))
+    barcode = Column(String, unique=True, nullable=True)
+
 
     category_id = Column(
         Integer,
         ForeignKey("categories.id")
     )
 
-    selling_price = Column(DECIMAL(10,2))
-
+    selling_price = Column(DECIMAL(10,2), nullable=False)
     reorder_level = Column(Integer)
 
     unit = Column(String(20))
@@ -47,4 +47,10 @@ class Product(Base):
     category = relationship(
         "Category",
         back_populates="products"
+    )
+
+    boms = relationship(
+        "BOM",
+        back_populates="product",
+        cascade="all, delete-orphan"
     )

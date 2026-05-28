@@ -24,3 +24,12 @@ class ProductionOrder(Base):
     product = relationship("Product")
 
     bom = relationship("BOM")
+
+    reservations = relationship(
+        "MaterialReservation",
+        back_populates="production_order"
+    )
+    purchase_requests = relationship(
+        "PurchaseRequest",
+        back_populates="production_order"
+    )
