@@ -48,3 +48,9 @@ class Product(Base):
         "Category",
         back_populates="products"
     )
+
+    boms = relationship(
+        "BOM",
+        back_populates="product",
+        cascade="all, delete-orphan"
+    )
