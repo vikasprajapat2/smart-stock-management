@@ -213,7 +213,7 @@ def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get
 def delete_product(
     id: int, 
     db: Session = Depends(get_db),
-    current_user = Depends(require_admin)
+    current_user = Depends(require_staff)
 ):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
