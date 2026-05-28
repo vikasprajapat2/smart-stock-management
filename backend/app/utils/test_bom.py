@@ -5,6 +5,7 @@ from decimal import Decimal
 # Adjust path to import app modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from app.main import app
 from app.database import SessionLocal, Base, engine
 from app.models.user import User
 from app.models.product import Product
