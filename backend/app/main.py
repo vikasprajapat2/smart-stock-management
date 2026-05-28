@@ -19,6 +19,9 @@ import app.models
 from app.routes.users import router as users_router
 from app.routes.purchase_orders import router as purchase_order_router
 from app.models import inventory_log
+from app.routes.boms import router as bom_router
+from app.routes.production_orders import router as production_order_router
+from app.routes.purchase_requests import router as purchase_request_router
 
 # Import all models to ensure they are registered on the metadata
 from app.models import (
@@ -33,7 +36,13 @@ from app.models import (
     order,
     order_item,
     notification,
-    inventory_log
+    inventory_log,
+    bom,
+    bom_item,
+    bom_version,
+    production_order,
+    material_reservation,
+    purchase_request
 )
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -67,7 +76,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://192.168.1.136:5173",
+        "http://100.80.224.93:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -157,3 +171,6 @@ app.include_router(dashboard_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(purchase_order_router)
+app.include_router(bom_router)
+app.include_router(production_order_router)
+app.include_router(purchase_request_router)
