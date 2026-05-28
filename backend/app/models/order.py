@@ -5,7 +5,7 @@ from sqlalchemy import (
     DECIMAL,
     TIMESTAMP
 )
-
+ 
 from sqlalchemy.sql import func
 
 from app.database import Base

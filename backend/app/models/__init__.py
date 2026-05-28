@@ -5,3 +5,4 @@ from .product import Product
 from .inventory import Inventory
 from .warehouse import Warehouse
 from app.models.inventory_log import InventoryLog
+from app.models.production_order import ProductionOrder

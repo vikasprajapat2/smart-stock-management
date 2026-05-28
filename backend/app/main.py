@@ -19,6 +19,7 @@ import app.models
 from app.routes.users import router as users_router
 from app.routes.purchase_orders import router as purchase_order_router
 from app.models import inventory_log
+from app.routes.production_orders import router as production_order_router
 
 # Import all models to ensure they are registered on the metadata
 from app.models import (
@@ -157,3 +158,4 @@ app.include_router(dashboard_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(purchase_order_router)
+app.include_router(production_order_router) 
