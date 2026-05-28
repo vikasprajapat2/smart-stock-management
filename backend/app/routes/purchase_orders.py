@@ -375,4 +375,4 @@ def get_purchase_order_pdf(
         path=pdf_path,
         filename=pdf_path,
         media_type='application/pdf'
-    )
+    ) 

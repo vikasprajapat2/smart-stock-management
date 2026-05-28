@@ -18,7 +18,6 @@ from app.models.role import Role
 from app.models.user import User
 import app.models
 from app.routes.users import router as users_router
-from app.routes.purchase_orders import router as purchase_order_router
 from app.models import inventory_log
 from app.routes.boms import router as bom_router
 from app.routes.production_orders import router as production_order_router
@@ -176,7 +175,6 @@ def qr_scanner():
     html_path = os.path.join(os.path.dirname(__file__), "static", "qr_scanner.html")
     return FileResponse(html_path)
 
-app.include_router(auth_router)
 app.include_router(category_router)
 app.include_router(product_excel_router)
 app.include_router(product_router)
@@ -194,6 +192,6 @@ app.include_router(dashboard_router)
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(purchase_order_router)
+app.include_router(production_order_router) 
 app.include_router(bom_router)
-app.include_router(production_order_router)
 app.include_router(purchase_request_router)
