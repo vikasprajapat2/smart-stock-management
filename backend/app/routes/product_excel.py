@@ -25,7 +25,8 @@ def download_product_template():
         "product_name": ["MacBook Pro"],
         "selling_price": [120000],
         "reorder_level": [5],
-        "unit": ["pcs"]
+        "unit": ["pcs"],
+        "initial_stock": [100]
     }
 
     df = pd.DataFrame(data)
@@ -99,34 +100,105 @@ def import_products(
     db: Session = Depends(get_db)
 ):
 
-    df = pd.read_excel(file.file)
+    contents = file.file.read()
+    import io
+    try:
+        df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"Invalid Excel file or format. Error: {str(e)}")
 
-    imported = 0
+    try:
+        # Fill NaN values to prevent 'cannot convert float NaN to integer' errors
+        df = df.fillna({
+            "product_name": "Unknown Product",
+            "selling_price": 0.0,
+            "reorder_level": 0,
+            "unit": "pcs",
+            "initial_stock": 0
+        })
 
-    for _, row in df.iterrows():
+        from app.utils.product_helpers import generate_sku, generate_barcode
+        from app.models.inventory import Inventory
+        from app.models.warehouse import Warehouse
+        
+        # Get or create Main Warehouse
+        main_warehouse = db.query(Warehouse).filter(Warehouse.warehouse_name == "Main Warehouse").first()
+        if not main_warehouse:
+            main_warehouse = Warehouse(warehouse_name="Main Warehouse", location="Main Location")
+            db.add(main_warehouse)
+            db.commit()
+            db.refresh(main_warehouse)
+        
+        imported = 0
+        for _, row in df.iterrows():
+            prod_name = str(row.get("product_name", "Unknown Product")).strip()
+            stock_to_add = int(float(row.get("initial_stock", 0)))
+            
+            # Check if product already exists
+            product = db.query(Product).filter(Product.product_name == prod_name).first()
+            
+            if product:
+                # Update existing product details if needed (optional, keeping it simple)
+                pass
+            else:
+                # Create new product
+                # Generate SKU
+                sku = None
+                for _ in range(5):
+                    temp_sku = generate_sku(prod_name, None)
+                    if not db.query(Product).filter(Product.sku == temp_sku).first():
+                        sku = temp_sku
+                        break
+                if not sku:
+                    import uuid
+                    sku = str(uuid.uuid4())[:10].upper()
+                    
+                # Generate Barcode
+                barcode = None
+                for _ in range(5):
+                    temp_barcode = generate_barcode()
+                    if not db.query(Product).filter(Product.barcode == temp_barcode).first():
+                        barcode = temp_barcode
+                        break
+                if not barcode:
+                    import random
+                    barcode = str(random.randint(1000000000, 9999999999))
 
-        product = Product(
+                product = Product(
+                    product_name=prod_name,
+                    selling_price=float(row.get("selling_price", 0.0)),
+                    reorder_level=int(float(row.get("reorder_level", 0))),
+                    unit=str(row.get("unit", "pcs")),
+                    sku=sku,
+                    barcode=barcode,
+                    is_active=True
+                )
+                db.add(product)
+                db.flush() # flush to get product.id for inventory
+                
+            # Handle Inventory
+            if stock_to_add > 0:
+                inventory = db.query(Inventory).filter(
+                    Inventory.product_id == product.id,
+                    Inventory.warehouse_id == main_warehouse.id
+                ).first()
+                if inventory:
+                    inventory.quantity += stock_to_add
+                else:
+                    new_inventory = Inventory(
+                        product_id=product.id,
+                        warehouse_id=main_warehouse.id,
+                        quantity=stock_to_add
+                    )
+                    db.add(new_inventory)
 
-            product_name=str(row.get("product_name", "")),
-
-            selling_price=float(row.get("selling_price", 0) or 0),
-
-            reorder_level=int(float(row.get("reorder_level", 0) or 0)),
-
-            unit=str(row.get("unit", "pcs") or "pcs"),
-
-            sku=None,
-
-            barcode=None,
-
-            is_active=True
-        )
-
-        db.add(product)
-
-        imported += 1
-
-    db.commit()
+            imported += 1
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"Database error during import: {str(e)}")
 
     return {
         "message": f"{imported} products imported successfully"

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Camera, Image, Clock, QrCode, ShieldCheck, ShoppingBag,
+  Camera, Image, Clock, ShieldCheck, ShoppingBag,
   Database, LayoutDashboard, Users, Layers,
   CreditCard, Bell, ChevronRight
 } from 'lucide-react';
@@ -13,12 +13,13 @@ import {
   DashboardView, WarehouseView, SuppliersView,
   PurchaseOrdersView, OrdersView, UsersView, CategoriesView
 } from './components/ERPViews';
+import { InventoryRecordsView } from './components/InventoryRecordsView';
 import { parseScanResult, type ParsedScanResult } from './utils/parser';
-import { api, checkBackendConnection, fetchWarehouses, submitProductScan, fetchNotifications, markNotificationRead } from './utils/api';
+import { checkBackendConnection, fetchWarehouses, submitProductScan, fetchNotifications, markNotificationRead } from './utils/api';
 import LoginModal from './components/LoginModal';
 import type { Warehouse as BackendWarehouse, Notification as BackendNotification } from './utils/api';
 
-type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history';
+type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'inventoryRecords' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -28,6 +29,19 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('access_token'));
+  
+  // Parse role from JWT
+  const getRoleFromToken = () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return 'STAFF';
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.role || 'STAFF';
+    } catch {
+      return 'STAFF';
+    }
+  };
+  const [userRole, setUserRole] = useState<string>(getRoleFromToken());
 
   // Backend Integration States
   const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
@@ -67,6 +81,13 @@ function App() {
       window.removeEventListener('auth-unauthorized', handleUnauthorized);
     };
   }, []);
+
+  // Update role on authentication
+  useEffect(() => {
+    if (isAuthenticated) {
+      setUserRole(getRoleFromToken());
+    }
+  }, [isAuthenticated]);
 
   // Fetch initial data on mount, but only if authenticated
   useEffect(() => {
@@ -403,6 +424,14 @@ function App() {
               </button>
 
               <button
+                className={`sidebar-nav-btn ${activeTab === 'inventoryRecords' ? 'active' : ''}`}
+                onClick={() => handleTabChange('inventoryRecords')}
+              >
+                <Database size={18} />
+                {!sidebarCollapsed && <span>Direct Inventory</span>}
+              </button>
+
+              <button
                 className={`sidebar-nav-btn ${activeTab === 'warehouse' ? 'active' : ''}`}
                 onClick={() => handleTabChange('warehouse')}
               >
@@ -511,7 +540,7 @@ function App() {
             <span style={{ fontSize: '1.2rem' }}>📦</span>
             <div style={{ textTransform: 'capitalize' }}>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>
-                {activeTab === 'webcam' ? 'Live Camera Decoder' : activeTab === 'inventory' ? 'Products & Stock Management' : activeTab === 'procurement' ? 'Procurement purchase invoices' : activeTab === 'dashboard' ? 'ERP Dashboard Summary' : activeTab + ' hub'}
+                {activeTab === 'webcam' ? 'Live Camera Decoder' : activeTab === 'inventory' ? 'Products & Stock Management' : activeTab === 'inventoryRecords' ? 'Direct Inventory Records' : activeTab === 'procurement' ? 'Procurement purchase invoices' : activeTab === 'dashboard' ? 'ERP Dashboard Summary' : activeTab + ' hub'}
               </h3>
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Enterprise stock logistical portal</p>
             </div>
@@ -593,7 +622,7 @@ function App() {
             )}
 
             <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.08)' }}></div>
-            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff' }}>Manager SVI</p>
+            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff' }}>{userRole} User</p>
 
           </div>
 
@@ -607,11 +636,11 @@ function App() {
           )}
 
           {activeTab === 'warehouse' && isBackendConnected && (
-            <WarehouseView />
+            <WarehouseView userRole={userRole} />
           )}
 
           {activeTab === 'suppliers' && isBackendConnected && (
-            <SuppliersView />
+            <SuppliersView userRole={userRole} />
           )}
 
           {activeTab === 'procurement' && isBackendConnected && (
@@ -637,6 +666,12 @@ function App() {
           {activeTab === 'inventory' && isBackendConnected && (
             <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
               <InventoryManager />
+            </div>
+          )}
+
+          {activeTab === 'inventoryRecords' && isBackendConnected && (
+            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+              <InventoryRecordsView />
             </div>
           )}
 

@@ -6,16 +6,24 @@ import {
 } from 'lucide-react';
 import {
   fetchDashboardStats, fetchNotifications, markNotificationRead,
-  fetchSuppliers, createSupplier, fetchGSTDetails,
-  fetchPurchaseOrders, createPurchaseOrder, updatePurchaseOrder,
-  fetchOrders, createOrder, fetchWarehouses, fetchProducts,
+  fetchSuppliers, createSupplier, updateSupplier, deleteSupplier, fetchGSTDetails,
+  fetchPurchaseOrders, createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf,
+  fetchOrders, createOrder, deleteSalesOrder,
+  fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse,
+  fetchProducts,
   fetchUsers, updateUserRole, deactivateUser, activateUser, deleteUser,
   fetchAllCategories, createCategory, updateCategory, deleteCategory
 } from '../utils/api';
 import type {
   Product, Supplier, Warehouse, PurchaseOrderResponse,
-  SalesOrderResponse, Notification, DashboardStats, User, Role, CategoryResponse
+  SalesOrderResponse, Notification, DashboardStats, User, CategoryResponse
 } from '../utils/api';
+
+interface Role {
+  id: number;
+  role_name: string;
+  description?: string;
+}
 
 // ─── 1. DASHBOARD VIEW ──────────────────────────────────────
 
@@ -251,11 +259,20 @@ const BarChart2Icon = ({ size, style }: any) => (
 
 // ─── 2. WAREHOUSE VIEW ──────────────────────────────────────
 
-export const WarehouseView: React.FC = () => {
+export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STAFF" }) => {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedWhId, setSelectedWhId] = useState<number | null>(null);
+
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
+  const [editingWhId, setEditingWhId] = useState<number | null>(null);
+  const [whName, setWhName] = useState<string>('');
+  const [whLocation, setWhLocation] = useState<string>('');
+  
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [successMsg, setSuccessMsg] = useState<string>('');
+  const [formLoading, setFormLoading] = useState<boolean>(false);
 
   const loadData = async () => {
     try {
@@ -265,7 +282,7 @@ export const WarehouseView: React.FC = () => {
       ]);
       setWarehouses(w);
       setProducts(p);
-      if (w.length > 0) {
+      if (w.length > 0 && !selectedWhId) {
         setSelectedWhId(w[0].id);
       }
     } catch (e) {
@@ -279,6 +296,53 @@ export const WarehouseView: React.FC = () => {
     loadData();
   }, []);
 
+  const handleSaveWarehouse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      if (editingWhId) {
+        await updateWarehouse(editingWhId, { warehouse_name: whName, location: whLocation });
+        setSuccessMsg('Warehouse updated successfully.');
+      } else {
+        const newWh = await createWarehouse({ warehouse_name: whName, location: whLocation });
+        setSuccessMsg('Warehouse created successfully.');
+        setSelectedWhId(newWh.id);
+      }
+      setWhName('');
+      setWhLocation('');
+      setShowAddForm(false);
+      setEditingWhId(null);
+      await loadData();
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Failed to save warehouse');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleEdit = (w: Warehouse, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingWhId(w.id);
+    setWhName(w.warehouse_name);
+    setWhLocation(w.location);
+    setShowAddForm(true);
+  };
+
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this warehouse? This may fail if it has inventory or orders attached.')) return;
+    try {
+      await deleteWarehouse(id);
+      setSuccessMsg('Warehouse deleted successfully.');
+      if (selectedWhId === id) setSelectedWhId(null);
+      await loadData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to delete warehouse.');
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '6rem 0' }}>
@@ -290,83 +354,146 @@ export const WarehouseView: React.FC = () => {
   const selectedWh = warehouses.find(w => w.id === selectedWhId);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '1.5rem', alignItems: 'start' }}>
-      
-      {/* Left side: Warehouses Directory */}
-      <div className="glass-panel" style={{ padding: '1.25rem' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Landmark size={18} style={{ color: 'var(--accent-cyan)' }} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Landmark size={20} style={{ color: 'var(--accent-cyan)' }} />
           Storage Hub Facilities
         </h3>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {warehouses.map(w => (
-            <div 
-              key={w.id} 
-              onClick={() => setSelectedWhId(w.id)}
-              style={{
-                padding: '1rem',
-                borderRadius: '10px',
-                background: selectedWhId === w.id ? 'rgba(139, 92, 246, 0.08)' : 'rgba(255,255,255,0.01)',
-                border: selectedWhId === w.id ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(255,255,255,0.03)',
-                cursor: 'pointer',
-                transition: 'var(--transition-smooth)'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '1.2rem' }}>📦</span>
-                <div>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: selectedWhId === w.id ? '#fff' : 'var(--text-secondary)' }}>{w.warehouse_name}</h4>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Location: {w.location}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {userRole !== 'staff' && (
+          <button
+            onClick={() => {
+              setShowAddForm(!showAddForm);
+              setEditingWhId(null);
+              setWhName('');
+              setWhLocation('');
+              setErrorMsg('');
+              setSuccessMsg('');
+            }}
+            className="scan-action-btn btn-primary"
+            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Plus size={16} />
+            {showAddForm ? 'Cancel' : 'Add Warehouse'}
+          </button>
+        )}
       </div>
 
-      {/* Right side: Selected Warehouse stock */}
-      {selectedWh && (
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
-            <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>{selectedWh.warehouse_name}</h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Logistics Hub Location: {selectedWh.location}</p>
-            </div>
-            <span style={{ fontSize: '0.75rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-neon)', padding: '0.25rem 0.6rem', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '20px', fontWeight: 700 }}>
-              ONLINE STATE
-            </span>
-          </div>
-
-          <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', fontWeight: 700 }}>Stored Inventory Catalog</h4>
-          
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Product Name</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>SKU Code</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'center' }}>Stock Stored</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Seeding products stock details */}
-                {products.map(p => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                    <td style={{ padding: '0.75rem', color: '#fff', fontWeight: 600 }}>{p.product_name}</td>
-                    <td style={{ padding: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{p.sku}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                      {p.stock_quantity} {p.unit || 'pcs'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
+      {successMsg && (
+        <div className="glass-panel" style={{ padding: '0.75rem 1rem', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', color: 'var(--accent-neon)', fontSize: '0.85rem' }}>
+          <Check size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> {successMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="glass-panel" style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', color: '#f87171', fontSize: '0.85rem' }}>
+          <AlertCircle size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> {errorMsg}
         </div>
       )}
 
+      {showAddForm && (
+        <form onSubmit={handleSaveWarehouse} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <h4 style={{ fontSize: '1rem', color: '#fff' }}>{editingWhId ? 'Edit Warehouse' : 'New Warehouse'}</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>Name</label>
+              <input type="text" required className="history-search-input" style={{ width: '100%' }} value={whName} onChange={(e) => setWhName(e.target.value)} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>Location</label>
+              <input type="text" required className="history-search-input" style={{ width: '100%' }} value={whLocation} onChange={(e) => setWhLocation(e.target.value)} />
+            </div>
+          </div>
+          <button type="submit" className="scan-action-btn btn-primary" style={{ width: '200px', height: '40px' }} disabled={formLoading}>
+            {formLoading ? <Loader className="spin-anim" size={16} /> : 'Save Warehouse'}
+          </button>
+        </form>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: '1.5rem', alignItems: 'start' }}>
+        {/* Left side: Warehouses Directory */}
+        <div className="glass-panel" style={{ padding: '1.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {warehouses.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No warehouses found.</p>
+            ) : warehouses.map(w => (
+              <div 
+                key={w.id} 
+                onClick={() => setSelectedWhId(w.id)}
+                style={{
+                  padding: '1rem',
+                  borderRadius: '10px',
+                  background: selectedWhId === w.id ? 'rgba(139, 92, 246, 0.08)' : 'rgba(255,255,255,0.01)',
+                  border: selectedWhId === w.id ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(255,255,255,0.03)',
+                  cursor: 'pointer',
+                  transition: 'var(--transition-smooth)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '1.2rem' }}>📦</span>
+                  <div>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: selectedWhId === w.id ? '#fff' : 'var(--text-secondary)' }}>{w.warehouse_name}</h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Location: {w.location}</p>
+                  </div>
+                </div>
+                {userRole !== 'staff' && (
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={(e) => handleEdit(w, e)} className="btn-icon-only" style={{ background: 'transparent', border: 'none', color: '#60a5fa' }} title="Edit">
+                      <Edit2 size={16} />
+                    </button>
+                    <button onClick={(e) => handleDelete(w.id, e)} className="btn-icon-only" style={{ background: 'transparent', border: 'none', color: '#f87171' }} title="Delete">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right side: Selected Warehouse stock */}
+        {selectedWh && (
+          <div className="glass-panel" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>{selectedWh.warehouse_name}</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Logistics Hub Location: {selectedWh.location}</p>
+              </div>
+              <span style={{ fontSize: '0.75rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-neon)', padding: '0.25rem 0.6rem', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '20px', fontWeight: 700 }}>
+                ONLINE STATE
+              </span>
+            </div>
+
+            <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', fontWeight: 700 }}>Stored Inventory Catalog (All Products)</h4>
+            
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Product Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>SKU Code</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Total Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map(p => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <td style={{ padding: '0.75rem', color: '#fff', fontWeight: 600 }}>{p.product_name}</td>
+                      <td style={{ padding: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{p.sku}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                        {p.stock_quantity} {p.unit || 'pcs'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -374,13 +501,14 @@ export const WarehouseView: React.FC = () => {
 
 // ─── 3. SUPPLIERS VIEW ──────────────────────────────────────
 
-export const SuppliersView: React.FC = () => {
+export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STAFF" }) => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
   
   // Register Supplier states
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
+  const [editingSupplierId, setEditingSupplierId] = useState<number | null>(null);
   const [gstin, setGstin] = useState<string>('');
   const [name, setName] = useState<string>('');
   const [contact, setContact] = useState<string>('');
@@ -429,21 +557,29 @@ export const SuppliersView: React.FC = () => {
     }
   };
 
-  const handleAddSupplier = async (e: React.FormEvent) => {
+  const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      await createSupplier({
+      const payload = {
         supplier_name: name,
         contact_name: contact || undefined,
         email: email || undefined,
         phone: phone || undefined,
         address: address || undefined,
         gst_number: gstin || undefined
-      });
-      setSuccessMsg('Supplier successfully registered in active partner catalog!');
+      };
+      
+      if (editingSupplierId) {
+        await updateSupplier(editingSupplierId, payload);
+        setSuccessMsg('Supplier profile updated successfully!');
+      } else {
+        await createSupplier(payload);
+        setSuccessMsg('Supplier successfully registered in active partner catalog!');
+      }
+      
       setName('');
       setContact('');
       setEmail('');
@@ -451,11 +587,36 @@ export const SuppliersView: React.FC = () => {
       setAddress('');
       setGstin('');
       setShowAddForm(false);
+      setEditingSupplierId(null);
       await loadSuppliers();
     } catch (e: any) {
-      setErrorMsg(e.message || 'Supplier registration failed.');
+      setErrorMsg(e.message || 'Supplier registration/update failed.');
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const handleEdit = (s: Supplier) => {
+    setEditingSupplierId(s.id);
+    setName(s.supplier_name);
+    setContact(s.contact_name || '');
+    setEmail(s.email || '');
+    setPhone(s.phone || '');
+    setAddress(s.address || '');
+    setGstin(s.gst_number || '');
+    setShowAddForm(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this supplier? Action cannot be undone if no orders are attached.')) return;
+    try {
+      await deleteSupplier(id);
+      setSuccessMsg('Supplier deleted successfully.');
+      await loadSuppliers();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to delete supplier.');
     }
   };
 
@@ -486,18 +647,30 @@ export const SuppliersView: React.FC = () => {
           />
         </div>
 
-        <button
-          onClick={() => {
-            setShowAddForm(!showAddForm);
-            setErrorMsg('');
-            setSuccessMsg('');
-          }}
-          className="scan-action-btn btn-primary"
-          style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Plus size={16} />
-          {showAddForm ? 'Close Form' : 'Register New Vendor'}
-        </button>
+        {userRole !== 'staff' && (
+          <button
+            onClick={() => {
+              const toggled = !showAddForm;
+              setShowAddForm(toggled);
+              if (!toggled) {
+                setEditingSupplierId(null);
+                setName('');
+                setContact('');
+                setEmail('');
+                setPhone('');
+                setAddress('');
+                setGstin('');
+              }
+              setErrorMsg('');
+              setSuccessMsg('');
+            }}
+            className="scan-action-btn btn-primary"
+            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Plus size={16} />
+            {showAddForm ? 'Close Form' : 'Register New Vendor'}
+          </button>
+        )}
       </div>
 
       {/* Notifications */}
@@ -512,12 +685,12 @@ export const SuppliersView: React.FC = () => {
         </div>
       )}
 
-      {/* Add Supplier Form */}
+      {/* Add/Edit Supplier Form */}
       {showAddForm && (
-        <form onSubmit={handleAddSupplier} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <form onSubmit={handleSaveSupplier} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Landmark size={18} style={{ color: 'var(--accent-cyan)' }} />
-            Register Business Vendor Profile
+            {editingSupplierId ? 'Edit Vendor Profile' : 'Register Business Vendor Profile'}
           </h3>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1rem', background: 'rgba(139, 92, 246, 0.03)', borderRadius: '10px', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
@@ -614,7 +787,7 @@ export const SuppliersView: React.FC = () => {
             style={{ width: '100%', height: '44px' }}
             disabled={formLoading}
           >
-            {formLoading ? <Loader className="spin-anim" size={18} /> : 'Save Supplier Profile'}
+            {formLoading ? <Loader className="spin-anim" size={18} /> : (editingSupplierId ? 'Update Supplier Profile' : 'Save Supplier Profile')}
           </button>
         </form>
       )}
@@ -630,10 +803,11 @@ export const SuppliersView: React.FC = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-glass)' }}>
-                  <th style={{ padding: '1rem' }}>Supplier Details</th>
-                  <th style={{ padding: '1rem' }}>GSTIN Status</th>
-                  <th style={{ padding: '1rem' }}>Contact Info</th>
-                  <th style={{ padding: '1rem' }}>Office Address</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Supplier Details</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>GSTIN Status</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Contact Info</th>
+                  <th style={{ padding: '1rem', textAlign: 'left' }}>Office Address</th>
+                  {userRole !== 'staff' && <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -665,8 +839,27 @@ export const SuppliersView: React.FC = () => {
                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={s.address}>
                       {s.address || 'N/A'}
                     </td>
+                    {userRole !== 'staff' && (
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          <button onClick={() => handleEdit(s)} className="btn-icon-only" style={{ background: 'rgba(96, 165, 250, 0.1)', border: 'none', color: '#60a5fa', borderRadius: '6px', padding: '0.4rem' }} title="Edit">
+                            <Edit2 size={16} />
+                          </button>
+                          <button onClick={() => handleDelete(s.id)} className="btn-icon-only" style={{ background: 'rgba(248, 113, 113, 0.1)', border: 'none', color: '#f87171', borderRadius: '6px', padding: '0.4rem' }} title="Delete">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
+                {filteredSuppliers.length === 0 && (
+                  <tr>
+                    <td colSpan={userRole !== 'staff' ? 5 : 4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No suppliers found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -692,6 +885,7 @@ export const PurchaseOrdersView: React.FC = () => {
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [selectedWhId, setSelectedWhId] = useState<string>('');
   const [deliveryDate, setDeliveryDate] = useState<string>('');
+  const [editingPoId, setEditingPoId] = useState<number | null>(null);
   
   // PO items builder
   const [poItems, setPoItems] = useState<Array<{ product_id: number; quantity: number; unit_price: number }>>([]);
@@ -752,24 +946,46 @@ export const PurchaseOrdersView: React.FC = () => {
     setSuccessMsg('');
 
     try {
-      await createPurchaseOrder({
+      const payload = {
         supplier_id: parseInt(selectedSupplierId),
         warehouse_id: selectedWhId ? parseInt(selectedWhId) : undefined,
-        status: 'PENDING',
+        status: 'PENDING' as const,
         delivery_date: deliveryDate || undefined,
         items: poItems
-      });
+      };
 
-      setSuccessMsg('Procurement Purchase Order compiled and saved in database as PENDING.');
+      if (editingPoId) {
+        await updatePurchaseOrder(editingPoId, payload);
+        setSuccessMsg('Procurement Purchase Order updated successfully.');
+      } else {
+        await createPurchaseOrder(payload);
+        setSuccessMsg('Procurement Purchase Order compiled and saved in database as PENDING.');
+      }
+
       setPoItems([]);
       setDeliveryDate('');
       setShowBuilder(false);
+      setEditingPoId(null);
       await loadData();
     } catch (e: any) {
       setErrorMsg(e.message || 'PO compilation failed.');
     } finally {
       setBuilderLoading(false);
     }
+  };
+
+  const handleEditPO = (po: PurchaseOrderResponse) => {
+    setEditingPoId(po.id);
+    setSelectedSupplierId(po.supplier_id ? po.supplier_id.toString() : '');
+    setSelectedWhId(po.warehouse_id ? po.warehouse_id.toString() : '');
+    setDeliveryDate(po.delivery_date ? po.delivery_date.split('T')[0] : '');
+    setPoItems((po.items || []).map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: item.unit_price || 0
+    })));
+    setShowBuilder(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // One-click Receive stock PO Completion
@@ -780,12 +996,23 @@ export const PurchaseOrdersView: React.FC = () => {
     }
     setLoading(true);
     try {
-      await updatePurchaseOrder(id, 'COMPLETED');
+      await updatePurchaseOrder(id, { status: 'COMPLETED' });
       setSuccessMsg('Stock registered and incremented in warehouse database successfully!');
       await loadData();
     } catch (e: any) {
       setErrorMsg(e.message || 'Failed to complete PO.');
       setLoading(false);
+    }
+  };
+
+  const handleDeletePO = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this Purchase Order?')) return;
+    try {
+      await deletePurchaseOrder(id);
+      setSuccessMsg('Purchase Order deleted successfully.');
+      await loadData();
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Failed to delete PO.');
     }
   };
 
@@ -802,6 +1029,7 @@ export const PurchaseOrdersView: React.FC = () => {
         <button
           onClick={() => {
             setShowBuilder(!showBuilder);
+            if (showBuilder) setEditingPoId(null);
             setErrorMsg('');
             setSuccessMsg('');
           }}
@@ -1002,16 +1230,47 @@ export const PurchaseOrdersView: React.FC = () => {
                       {po.status}
                     </span>
 
+                    {/* PDF Download Button */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          await downloadPurchaseOrderPdf(po.id);
+                        } catch (err: any) {
+                          alert(err.message || 'Failed to download PDF');
+                        }
+                      }}
+                      className="scan-action-btn btn-secondary"
+                      style={{ width: 'auto', padding: '0.25rem 0.65rem', fontSize: '0.7rem', height: '26px' }}
+                    >
+                      Download PDF
+                    </button>
+
                     {/* Receive Stock Actions Button */}
                     {po.status === 'PENDING' && (
-                      <button
-                        onClick={() => handleCompletePO(po.id, po.warehouse_id)}
-                        className="scan-action-btn btn-primary"
-                        style={{ width: 'auto', padding: '0.25rem 0.65rem', fontSize: '0.7rem', height: '26px' }}
-                      >
-                        Receive Stock IN
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleEditPO(po)}
+                          className="scan-action-btn btn-secondary"
+                          style={{ width: 'auto', padding: '0.25rem 0.65rem', fontSize: '0.7rem', height: '26px' }}
+                        >
+                          Edit PO
+                        </button>
+                        <button
+                          onClick={() => handleCompletePO(po.id, po.warehouse_id)}
+                          className="scan-action-btn btn-primary"
+                          style={{ width: 'auto', padding: '0.25rem 0.65rem', fontSize: '0.7rem', height: '26px' }}
+                        >
+                          Receive Stock IN
+                        </button>
+                      </>
                     )}
+                    <button
+                      onClick={() => handleDeletePO(po.id)}
+                      className="scan-action-btn btn-secondary"
+                      style={{ width: 'auto', padding: '0.25rem 0.65rem', fontSize: '0.7rem', height: '26px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
 
@@ -1153,6 +1412,17 @@ export const OrdersView: React.FC = () => {
 
   const calculateTotal = () => {
     return salesItems.reduce((acc, item) => acc + (item.quantity * item.price), 0);
+  };
+
+  const handleDeleteOrder = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this Sales Invoice?')) return;
+    try {
+      await deleteSalesOrder(id);
+      setSuccessMsg('Sales Invoice deleted successfully.');
+      await loadData();
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Failed to delete Sales Invoice.');
+    }
   };
 
   return (
@@ -1318,9 +1588,18 @@ export const OrdersView: React.FC = () => {
                     <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>Client: {order.customer_name}</span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>ID: Invoice-{order.id}</span>
                   </div>
-                  <span style={{ fontSize: '0.7rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-neon)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
-                    {order.status}
-                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.7rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-neon)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
+                      {order.status}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteOrder(order.id)}
+                      className="scan-action-btn btn-secondary"
+                      style={{ width: 'auto', padding: '0.25rem 0.65rem', fontSize: '0.7rem', height: '26px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
 
                 {/* Billing Summary */}
@@ -1466,7 +1745,7 @@ export const UsersView: React.FC = () => {
 
               {editingRoleId === user.id ? (
                 <select
-                  value={selectedRoleId || user.role_id}
+                  value={selectedRoleId || roles.find(r => r.role_name === user.role)?.id || 3}
                   onChange={(e) => setSelectedRoleId(parseInt(e.target.value))}
                   style={{
                     padding: '0.4rem 0.5rem',
@@ -1492,14 +1771,14 @@ export const UsersView: React.FC = () => {
                   fontWeight: 600,
                   textTransform: 'capitalize'
                 }}>
-                  {user.role?.role_name || 'Unknown'}
+                  {user.role || 'Unknown'}
                 </span>
               )}
 
               {editingRoleId === user.id ? (
                 <>
                   <button
-                    onClick={() => handleChangeRole(user.id, selectedRoleId || user.role_id)}
+                    onClick={() => handleChangeRole(user.id, selectedRoleId || roles.find(r => r.role_name === user.role)?.id || 3)}
                     style={{
                       padding: '0.4rem 0.6rem',
                       background: 'rgba(34, 197, 94, 0.15)',
@@ -1532,7 +1811,7 @@ export const UsersView: React.FC = () => {
                 <button
                   onClick={() => {
                     setEditingRoleId(user.id);
-                    setSelectedRoleId(user.role_id);
+                    setSelectedRoleId(roles.find(r => r.role_name === user.role)?.id || 3);
                   }}
                   style={{
                     padding: '0.4rem 0.6rem',

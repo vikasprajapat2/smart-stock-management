@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
 from dotenv import load_dotenv
@@ -14,17 +14,29 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set. Please check your .env file.")
 
+def create_db_engine(url: str):
+    """Create engine with proper pool settings to handle dropped connections."""
+    if url.startswith("postgresql"):
+        return create_engine(
+            url,
+            connect_args={"connect_timeout": 5},
+            pool_pre_ping=True,       # Test connection health before each use
+            pool_recycle=300,         # Recycle connections every 5 minutes
+            pool_size=5,
+            max_overflow=10,
+        )
+    return create_engine(url)
+
 try:
-    # Use connection timeout for postgresql to fail fast
-    connect_args = {"connect_timeout": 3} if DATABASE_URL.startswith("postgresql") else {}
-    engine = create_engine(DATABASE_URL, connect_args=connect_args)
-    # Test connection
+    engine = create_db_engine(DATABASE_URL)
+    # Test connection at startup
     with engine.connect() as conn:
-        pass
+        conn.execute(text("SELECT 1"))
+    logger.info(f"✅ Database connected: {DATABASE_URL.split('@')[-1]}")
 except Exception as e:
-    logger.warning(f"Database connection failed to {DATABASE_URL}: {e}. Falling back to SQLite local database.")
-    DATABASE_URL = "sqlite:///./test.db"
-    engine = create_engine(DATABASE_URL)
+    logger.warning(f"Database connection failed ({e}). Falling back to SQLite local database.")
+    DATABASE_URL = "sqlite:///./smartstock_local.db"
+    engine = create_db_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -38,5 +50,8 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
-        db.close()
+        db.close()

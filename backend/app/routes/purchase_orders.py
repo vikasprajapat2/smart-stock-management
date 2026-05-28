@@ -13,7 +13,7 @@ from app.models.inventory import Inventory
 from app.schemas.purchase_order_schema import PurchaseOrderCreate, PurchaseOrderUpdate, PurchaseOrderResponse
 from app.utils.product_helpers import generate_po_number
 from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
-from app.utils.role_checker import require_manager
+from app.utils.role_checker import require_manager, require_staff, require_admin
 from fastapi.responses import FileResponse
 from reportlab.pdfgen import canvas
 import os

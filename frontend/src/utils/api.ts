@@ -277,6 +277,53 @@ export async function fetchProducts(search?: string): Promise<Product[]> {
   return res.json();
 }
 
+// Download blank Excel template for bulk product import
+export async function downloadProductTemplate(): Promise<void> {
+  const res = await fetchWithAuth(`${API_BASE}/products/template`);
+  if (!res.ok) throw new Error('Failed to download template');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'product_template.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+// Export all products to Excel
+export async function exportProductsExcel(): Promise<void> {
+  const res = await fetchWithAuth(`${API_BASE}/products/export`);
+  if (!res.ok) throw new Error('Failed to export products');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'products.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+// Import products from Excel file
+export async function importProductsExcel(file: File): Promise<{ message: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const token = localStorage.getItem('access_token');
+  const res = await fetch(`${API_BASE}/products/import`, {
+    method: 'POST',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to import products');
+  }
+  return res.json();
+}
+
 // Add a new product
 export async function createProduct(productData: ProductCreateInput): Promise<Product> {
   const res = await fetchWithAuth(`${API_BASE}/products/`, {
@@ -379,11 +426,7 @@ export async function createPurchaseOrder(po: PurchaseOrderCreateInput): Promise
   return res.json();
 }
 
-export async function updatePurchaseOrder(id: number, status: 'PENDING' | 'COMPLETED' | 'CANCELLED', warehouseId?: number): Promise<PurchaseOrderResponse> {
-  const payload: any = { status };
-  if (warehouseId !== undefined) {
-    payload.warehouse_id = warehouseId;
-  }
+export async function updatePurchaseOrder(id: number, payload: Partial<PurchaseOrderCreateInput> & { status?: 'PENDING' | 'COMPLETED' | 'CANCELLED' }): Promise<PurchaseOrderResponse> {
   const res = await fetchWithAuth(`${API_BASE}/purchase-orders/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -394,6 +437,42 @@ export async function updatePurchaseOrder(id: number, status: 'PENDING' | 'COMPL
     throw new Error(err.detail || 'Failed to update purchase order');
   }
   return res.json();
+}
+
+export async function receivePurchaseOrder(poId: number): Promise<{ message: string }> {
+  const res = await fetchWithAuth(`${API_BASE}/purchase-orders/${poId}/receive`, {
+    method: 'PUT'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to receive purchase order');
+  }
+  return res.json();
+}
+
+export async function downloadPurchaseOrderPdf(id: number): Promise<void> {
+  const res = await fetchWithAuth(`${API_BASE}/purchase-orders/${id}/pdf`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to download purchase order PDF');
+  }
+  const blob = await res.blob();
+  const contentDisposition = res.headers.get('content-disposition');
+  let filename = `PO_${id}.pdf`;
+  if (contentDisposition && contentDisposition.includes('filename=')) {
+    const match = contentDisposition.match(/filename="?([^"]+)"?/);
+    if (match && match[1]) {
+      filename = match[1];
+    }
+  }
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 // ─── SALES ORDERS ──────────────────────────────────────────
@@ -459,22 +538,28 @@ export interface User {
   id: number;
   full_name: string;
   email: string;
-  role_id: number;
-  role?: { id: number; role_name: string; description: string };
+  role: string;
   is_active: boolean;
-}
-
-export interface Role {
-  id: number;
-  role_name: string;
-  description: string;
 }
 
 export interface UserCreateInput {
   full_name: string;
   email: string;
   password: string;
-  role_id: number;
+  role: string;
+}
+
+export async function registerUser(userData: UserCreateInput): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to register user');
+  }
+  return res.json();
 }
 
 export async function fetchUsers(): Promise<User[]> {
@@ -621,6 +706,191 @@ export async function deleteCategory(id: number): Promise<any> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to delete category');
+  }
+  return res.json();
+}
+
+// ─── ADDITIONS FOR WAREHOUSES ─────────────────────────────
+
+export interface WarehouseCreateInput {
+  warehouse_name: string;
+  location: string;
+  manager_id?: number;
+}
+
+export async function createWarehouse(data: WarehouseCreateInput): Promise<Warehouse> {
+  const res = await fetchWithAuth(`${API_BASE}/warehouses/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create warehouse');
+  }
+  return res.json();
+}
+
+export async function updateWarehouse(id: number, data: Partial<WarehouseCreateInput>): Promise<Warehouse> {
+  const res = await fetchWithAuth(`${API_BASE}/warehouses/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update warehouse');
+  }
+  return res.json();
+}
+
+export async function deleteWarehouse(id: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/warehouses/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete warehouse');
+  }
+  return res.json();
+}
+
+// ─── MISSING PRODUCT APIS ──────────────────────────────────
+
+export async function updateProduct(id: number, data: Partial<ProductCreateInput>): Promise<Product> {
+  const res = await fetchWithAuth(`${API_BASE}/products/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update product');
+  }
+  return res.json();
+}
+
+export async function deleteProduct(id: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/products/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete product');
+  }
+  return res.json();
+}
+
+// ─── MISSING SUPPLIER APIS ─────────────────────────────────
+
+export async function updateSupplier(id: number, data: Partial<SupplierCreateInput>): Promise<Supplier> {
+  const res = await fetchWithAuth(`${API_BASE}/suppliers/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update supplier');
+  }
+  return res.json();
+}
+
+export async function deleteSupplier(id: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/suppliers/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete supplier');
+  }
+  return res.json();
+}
+
+// ─── INVENTORY MANAGEMENT APIS ─────────────────────────────
+
+export interface Inventory {
+  id: number;
+  product_id: number;
+  warehouse_id: number;
+  quantity: number;
+  quantity_reserved: number;
+  last_updated: string;
+}
+
+export interface InventoryCreateInput {
+  product_id: number;
+  warehouse_id: number;
+  quantity_available: number;
+  quantity_reserved?: number;
+}
+
+export async function fetchInventoryRecords(): Promise<Inventory[]> {
+  const res = await fetchWithAuth(`${API_BASE}/inventory/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch inventory records');
+  }
+  return res.json();
+}
+
+export async function createInventoryRecord(data: InventoryCreateInput): Promise<Inventory> {
+  const res = await fetchWithAuth(`${API_BASE}/inventory/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create inventory record');
+  }
+  return res.json();
+}
+
+export async function updateInventoryRecord(id: number, data: InventoryCreateInput): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/inventory/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update inventory record');
+  }
+  return res.json();
+}
+
+export async function deleteInventoryRecord(id: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/inventory/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete inventory record');
+  }
+  return res.json();
+}
+
+// ─── MISSING ORDER DELETE APIS ─────────────────────────────
+
+export async function deletePurchaseOrder(id: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/purchase-orders/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete purchase order');
+  }
+  return res.json();
+}
+
+export async function deleteSalesOrder(id: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/orders/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete sales order');
   }
   return res.json();
 }

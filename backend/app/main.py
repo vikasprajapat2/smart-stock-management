@@ -6,6 +6,7 @@ from app.database import Base, engine
 from app.routes.auth import router as auth_router
 from app.routes.categories import router as category_router
 from app.routes.products import router as product_router
+from app.routes.product_excel import router as product_excel_router
 from app.routes.suppliers import router as supplier_router
 from app.routes.purchase_orders import router as purchase_order_router
 from app.routes.inventory import router as inventory_router
@@ -88,6 +89,27 @@ def seed_database():
 
     db = SessionLocal()
     try:
+        # Seed Roles
+        if db.query(Role).count() == 0:
+            roles = [
+                Role(role_name="admin"),
+                Role(role_name="manager"),
+                Role(role_name="staff")
+            ]
+            db.add_all(roles)
+            db.commit()
+
+        # Seed Admin User
+        if db.query(User).count() == 0:
+            admin_user = User(
+                full_name="System Admin",
+                email="admin@gmail.com",
+                password_hash="123456",  # plaintext for dev seeding, usually hashed
+                role="ADMIN",
+                is_active=True
+            )
+            db.add(admin_user)
+            db.commit()
         # Check if categories exist, if not seed some
         if db.query(Category).count() == 0:
             cats = [
@@ -142,6 +164,7 @@ def qr_scanner():
 
 app.include_router(auth_router)
 app.include_router(category_router)
+app.include_router(product_excel_router)
 app.include_router(product_router)
 app.include_router(supplier_router)
 app.include_router(purchase_order_router)

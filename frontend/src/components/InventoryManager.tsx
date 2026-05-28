@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Search, ShoppingBag, Loader, AlertTriangle, 
-  Check, RefreshCw, ShieldAlert, QrCode, X, Download
+  Check, RefreshCw, ShieldAlert, QrCode, X, Download, FileUp, FileDown, FileSpreadsheet, Edit2, Trash2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { createPortal } from 'react-dom';
 import { 
-  fetchProducts, createProduct, fetchCategories, 
-  checkBackendConnection, fetchWarehouses, submitProductScan
+  fetchProducts, createProduct, updateProduct, deleteProduct, fetchCategories, 
+  checkBackendConnection, fetchWarehouses, submitProductScan,
+  downloadProductTemplate, exportProductsExcel, importProductsExcel
 } from '../utils/api';
-import type { Product, Category, Warehouse } from '../utils/api';
+import type { Product, Category, Warehouse, ProductCreateInput } from '../utils/api';
 
 export const InventoryManager: React.FC = () => {
   // Connection and data states
@@ -33,6 +35,7 @@ export const InventoryManager: React.FC = () => {
   const [reorderLevel, setReorderLevel] = useState<string>('10');
   const [unit, setUnit] = useState<string>('pcs');
   const [formLoading, setFormLoading] = useState<boolean>(false);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
 
   // Storage & Seeding States
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -42,6 +45,61 @@ export const InventoryManager: React.FC = () => {
   // Auto-generation flags and helpers
   const [isSkuManuallyEdited, setIsSkuManuallyEdited] = useState<boolean>(false);
   const [isBarcodeManuallyEdited, setIsBarcodeManuallyEdited] = useState<boolean>(false);
+
+  // Excel bulk import/export states
+  const [excelLoading, setExcelLoading] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Excel Handlers
+  const handleDownloadTemplate = async () => {
+    try {
+      setExcelLoading(true);
+      setError('');
+      await downloadProductTemplate();
+      setFormSuccess('Template downloaded successfully.');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to download template.');
+    } finally {
+      setExcelLoading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setExcelLoading(true);
+      setError('');
+      await exportProductsExcel();
+      setFormSuccess('Products exported successfully.');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to export products.');
+    } finally {
+      setExcelLoading(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    try {
+      setExcelLoading(true);
+      setError('');
+      setFormSuccess('');
+      const response = await importProductsExcel(file);
+      setFormSuccess(response.message || 'Products imported successfully.');
+      await loadData(true);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to import products.');
+    } finally {
+      setExcelLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // Helper to generate a random 10-digit numeric barcode number
   const generateRandomBarcode = (): string => {
@@ -159,8 +217,8 @@ export const InventoryManager: React.FC = () => {
     loadData();
   }, []);
 
-  // Handle Add Product Submit
-  const handleAddProduct = async (e: React.FormEvent) => {
+  // Handle Save Product
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
@@ -169,7 +227,7 @@ export const InventoryManager: React.FC = () => {
     setFormSuccess('');
 
     try {
-      const newProd = await createProduct({
+      const payload: ProductCreateInput = {
         product_name: name,
         sku: sku.trim() || undefined,
         barcode: barcode.trim() || undefined,
@@ -178,24 +236,29 @@ export const InventoryManager: React.FC = () => {
         reorder_level: reorderLevel ? parseInt(reorderLevel) : undefined,
         unit: unit.trim() || 'pcs',
         is_active: true
-      });
+      };
 
-      // Seeding initial stock
-      const initStockNum = parseInt(initialStock) || 0;
-      if (initStockNum > 0 && selectedWarehouseId) {
-        try {
-          await submitProductScan({
-            barcode: newProd.barcode,
-            action: 'IN',
-            warehouse_id: parseInt(selectedWarehouseId),
-            quantity: initStockNum
-          });
-        } catch (scanErr) {
-          console.error("Failed to seed initial stock quantity:", scanErr);
+      if (editingProductId) {
+        await updateProduct(editingProductId, payload);
+        setFormSuccess(`Product "${payload.product_name}" updated successfully!`);
+      } else {
+        const newProd = await createProduct(payload);
+        // Seeding initial stock
+        const initStockNum = parseInt(initialStock) || 0;
+        if (initStockNum > 0 && selectedWarehouseId) {
+          try {
+            await submitProductScan({
+              barcode: newProd.barcode,
+              action: 'IN',
+              warehouse_id: parseInt(selectedWarehouseId),
+              quantity: initStockNum
+            });
+          } catch (scanErr) {
+            console.error("Failed to seed initial stock quantity:", scanErr);
+          }
         }
+        setFormSuccess(`Product "${newProd.product_name}" registered successfully! ${initStockNum > 0 ? `Seeded ${initStockNum} unit(s) into warehouse.` : ''} Barcode: ${newProd.barcode}`);
       }
-
-      setFormSuccess(`Product "${newProd.product_name}" registered successfully! ${initStockNum > 0 ? `Seeded ${initStockNum} unit(s) into warehouse.` : ''} Barcode: ${newProd.barcode}`);
       
       // Reset form fields
       setName('');
@@ -207,6 +270,7 @@ export const InventoryManager: React.FC = () => {
       setUnit('pcs');
       setInitialStock('0');
       setShowAddForm(false);
+      setEditingProductId(null);
       setIsSkuManuallyEdited(false);
       setIsBarcodeManuallyEdited(false);
 
@@ -214,9 +278,37 @@ export const InventoryManager: React.FC = () => {
       await loadData(true);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Failed to create product.');
+      setError(err.message || 'Failed to save product.');
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const handleEditProduct = (p: Product) => {
+    setEditingProductId(p.id);
+    setName(p.product_name);
+    setSku(p.sku || '');
+    setBarcode(p.barcode || '');
+    setCategoryId(p.category_id ? p.category_id.toString() : '');
+    setPrice(p.selling_price ? p.selling_price.toString() : '');
+    setReorderLevel(p.reorder_level ? p.reorder_level.toString() : '10');
+    setUnit(p.unit || 'pcs');
+    setIsSkuManuallyEdited(true);
+    setIsBarcodeManuallyEdited(true);
+    setShowAddForm(true);
+    setError('');
+    setFormSuccess('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this product? It will fail if there is existing inventory.')) return;
+    try {
+      await deleteProduct(id);
+      setFormSuccess('Product deleted successfully.');
+      await loadData(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete product.');
     }
   };
 
@@ -283,7 +375,45 @@ export const InventoryManager: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            onClick={handleDownloadTemplate}
+            className="scan-action-btn btn-secondary"
+            style={{ padding: '0.65rem', width: 'auto', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', background: 'rgba(139, 92, 246, 0.1)', color: '#c084fc', border: '1px solid rgba(139, 92, 246, 0.2)' }}
+            title="Download Excel Template"
+            disabled={!isConnected || excelLoading}
+          >
+            <FileSpreadsheet size={16} /> <span className="hide-mobile">Template</span>
+          </button>
+
+          <button
+            onClick={handleExportExcel}
+            className="scan-action-btn btn-secondary"
+            style={{ padding: '0.65rem', width: 'auto', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.2)' }}
+            title="Export Products to Excel"
+            disabled={!isConnected || excelLoading}
+          >
+            <FileDown size={16} /> <span className="hide-mobile">Export</span>
+          </button>
+
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            style={{ display: 'none' }} 
+            ref={fileInputRef}
+            onChange={handleFileChange}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="scan-action-btn btn-secondary"
+            style={{ padding: '0.65rem', width: 'auto', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', background: 'rgba(234, 179, 8, 0.1)', color: '#facc15', border: '1px solid rgba(234, 179, 8, 0.2)' }}
+            title="Import Products from Excel"
+            disabled={!isConnected || excelLoading}
+          >
+            {excelLoading ? <Loader size={16} className="spin-anim" /> : <FileUp size={16} />} 
+            <span className="hide-mobile">Import</span>
+          </button>
+
           <button
             onClick={() => loadData(false)}
             className="scan-action-btn btn-secondary"
@@ -296,15 +426,26 @@ export const InventoryManager: React.FC = () => {
           
           <button
             onClick={() => {
-              setShowAddForm(!showAddForm);
+              const toggled = !showAddForm;
+              setShowAddForm(toggled);
               setFormSuccess('');
+              if (!toggled) {
+                setEditingProductId(null);
+                setName('');
+                setSku('');
+                setBarcode('');
+                setCategoryId('');
+                setPrice('');
+                setReorderLevel('10');
+                setUnit('pcs');
+              }
             }}
             className="scan-action-btn btn-primary"
             style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             disabled={!isConnected}
           >
             <Plus size={16} />
-            {showAddForm ? 'Close Form' : 'Add New Product'}
+            <span className="hide-mobile">{showAddForm ? 'Close Form' : 'Add New'}</span>
           </button>
         </div>
       </div>
@@ -328,10 +469,10 @@ export const InventoryManager: React.FC = () => {
 
       {/* Add Product Form */}
       {showAddForm && (
-        <form onSubmit={handleAddProduct} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <form onSubmit={handleSaveProduct} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <ShoppingBag size={18} style={{ color: 'var(--accent-cyan)' }} />
-            Register Product Details
+            {editingProductId ? 'Edit Product Details' : 'Register Product Details'}
           </h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -546,7 +687,7 @@ export const InventoryManager: React.FC = () => {
             style={{ width: '100%', marginTop: '0.5rem', height: '44px' }}
             disabled={formLoading}
           >
-            {formLoading ? <Loader className="spin-anim" size={18} /> : 'Save Product & Seed Initial Stock'}
+            {formLoading ? <Loader className="spin-anim" size={18} /> : (editingProductId ? 'Update Product' : 'Save Product & Seed Initial Stock')}
           </button>
         </form>
       )}
@@ -672,26 +813,52 @@ export const InventoryManager: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* QR Code Action */}
+                        {/* Actions */}
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
-                          <button
-                            onClick={() => setQrPopupProduct(p)}
-                            className="scan-action-btn btn-secondary"
-                            style={{ 
-                              padding: '0.45rem 0.65rem', 
-                              fontSize: '0.75rem', 
-                              width: 'auto',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.35rem',
-                              background: 'rgba(139, 92, 246, 0.1)',
-                              color: '#c084fc',
-                              border: '1px solid rgba(139, 92, 246, 0.2)'
-                            }}
-                          >
-                            <QrCode size={12} />
-                            Get QR Code
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                            <button
+                              onClick={() => setQrPopupProduct(p)}
+                              className="scan-action-btn btn-secondary"
+                              style={{ 
+                                padding: '0.45rem', 
+                                background: 'rgba(139, 92, 246, 0.1)',
+                                color: '#c084fc',
+                                border: '1px solid rgba(139, 92, 246, 0.2)',
+                                width: 'auto'
+                              }}
+                              title="QR Code"
+                            >
+                              <QrCode size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleEditProduct(p)}
+                              className="scan-action-btn btn-secondary"
+                              style={{ 
+                                padding: '0.45rem', 
+                                background: 'rgba(96, 165, 250, 0.1)',
+                                color: '#60a5fa',
+                                border: '1px solid rgba(96, 165, 250, 0.2)',
+                                width: 'auto'
+                              }}
+                              title="Edit Product"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(p.id)}
+                              className="scan-action-btn btn-secondary"
+                              style={{ 
+                                padding: '0.45rem', 
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#f87171',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                width: 'auto'
+                              }}
+                              title="Delete Product"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -725,30 +892,38 @@ export const InventoryManager: React.FC = () => {
       `}</style>
 
       {/* QR Code Modal Popup */}
-      {qrPopupProduct && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          animation: 'fadeIn 0.2s ease-out'
-        }}>
-          <div className="glass-panel" style={{
-            position: 'relative',
-            width: '100%',
-            maxWidth: '380px',
-            padding: '2rem',
+      {qrPopupProduct && createPortal(
+        <div
+          onClick={() => setQrPopupProduct(null)}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 99999,
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            gap: '1.5rem',
-            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-          }}>
-            <button 
+            justifyContent: 'center',
+            animation: 'fadeIn 0.2s ease-out',
+            padding: '1rem'
+          }}
+        >
+          <div
+            className="glass-panel"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              width: '100%',
+              maxWidth: '380px',
+              padding: '2rem',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1.5rem',
+              animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            <button
               onClick={() => setQrPopupProduct(null)}
               style={{
                 position: 'absolute',
@@ -770,7 +945,7 @@ export const InventoryManager: React.FC = () => {
             >
               <X size={20} />
             </button>
-            
+
             <div style={{ textAlign: 'center' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>
                 {qrPopupProduct.product_name}
@@ -780,21 +955,29 @@ export const InventoryManager: React.FC = () => {
               </p>
             </div>
 
-            <div style={{
-              background: '#fff',
-              padding: '1.25rem',
-              borderRadius: '16px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-              border: '4px solid rgba(255,255,255,0.1)',
-              backgroundClip: 'padding-box'
-            }}>
-              <QRCodeSVG 
-                value={qrPopupProduct.barcode}
-                size={200}
-                level="M"
-                includeMargin={false}
-              />
-            </div>
+            {qrPopupProduct.barcode ? (
+              <div
+                id="qr-code-render-box"
+                style={{
+                  background: '#fff',
+                  padding: '1.25rem',
+                  borderRadius: '16px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                }}
+              >
+                <QRCodeSVG
+                  value={qrPopupProduct.barcode}
+                  size={200}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+            ) : (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                <QrCode size={48} style={{ margin: '0 auto 0.75rem', opacity: 0.3 }} />
+                <p>No barcode assigned to this product.</p>
+              </div>
+            )}
 
             <div style={{
               width: '100%',
@@ -806,41 +989,45 @@ export const InventoryManager: React.FC = () => {
             }}>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Scannable Barcode Data:</p>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', color: 'var(--accent-cyan)', fontWeight: 600, wordBreak: 'break-all' }}>
-                {qrPopupProduct.barcode}
+                {qrPopupProduct.barcode || 'N/A'}
               </p>
             </div>
-            
-            <button 
-              className="scan-action-btn btn-primary"
-              style={{ width: '100%', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-              onClick={() => {
-                const svg = document.querySelector('.glass-panel svg');
-                if (!svg) return;
-                const svgData = new XMLSerializer().serializeToString(svg);
-                const canvas = document.createElement("canvas");
-                const ctx = canvas.getContext("2d");
-                const img = new Image();
-                img.onload = () => {
-                  canvas.width = img.width + 40;
-                  canvas.height = img.height + 40;
-                  if(ctx) {
-                    ctx.fillStyle = "white";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 20, 20);
-                    const a = document.createElement("a");
-                    a.download = `QR_${qrPopupProduct.sku}.png`;
-                    a.href = canvas.toDataURL("image/png");
-                    a.click();
-                  }
-                };
-                img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
-              }}
-            >
-              <Download size={16} />
-              Download QR Image
-            </button>
+
+            {qrPopupProduct.barcode && (
+              <button
+                className="scan-action-btn btn-primary"
+                style={{ width: '100%', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                onClick={() => {
+                  const box = document.getElementById('qr-code-render-box');
+                  const svg = box ? box.querySelector('svg') : null;
+                  if (!svg) return;
+                  const svgData = new XMLSerializer().serializeToString(svg);
+                  const canvas = document.createElement('canvas');
+                  const ctx = canvas.getContext('2d');
+                  const img = new Image();
+                  img.onload = () => {
+                    canvas.width = img.width + 40;
+                    canvas.height = img.height + 40;
+                    if (ctx) {
+                      ctx.fillStyle = 'white';
+                      ctx.fillRect(0, 0, canvas.width, canvas.height);
+                      ctx.drawImage(img, 20, 20);
+                      const a = document.createElement('a');
+                      a.download = `QR_${qrPopupProduct.sku}.png`;
+                      a.href = canvas.toDataURL('image/png');
+                      a.click();
+                    }
+                  };
+                  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+                }}
+              >
+                <Download size={16} />
+                Download QR Image
+              </button>
+            )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
