@@ -8,6 +8,7 @@ import os
 # Adjust path to import models
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from app.main import app
 from app.database import DATABASE_URL, SessionLocal
 from app.models.user import User
 from app.models.role import Role
@@ -48,21 +49,13 @@ def setup_db():
         if test_user:
             db.query(User).filter(User.id == test_user.id).delete()
 
-        # 5. Clean up test role
-        db.query(Role).filter(Role.role_name == "Manager").delete()
         db.commit()
-
-        # Create a test Role & User for manager
-        role = Role(role_name="Manager")
-        db.add(role)
-        db.commit()
-        db.refresh(role)
 
         user = User(
             full_name="Warehouse Manager",
             email="manager@warehouse.com",
             password_hash="hashedpass",
-            role_id=role.id,
+            role="MANAGER",
             is_active=True
         )
         db.add(user)
@@ -173,7 +166,7 @@ def run_tests(manager_id):
     # Attempt to delete (should fail)
     r = requests.delete(f"{API_URL}/warehouses/{warehouse_id}")
     assert r.status_code == 400, f"Expected 400 for blocked deletion, got {r.status_code}: {r.text}"
-    assert "Cannot delete warehouse with associated inventory" in r.json()["detail"]
+    assert "Cannot delete warehouse with inventory" in r.json()["detail"]
     print("  [PASSED] Deletion blocked when associated inventory exists")
 
     # Clean up associated inventory/product/category
