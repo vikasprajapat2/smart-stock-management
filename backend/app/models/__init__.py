@@ -5,3 +5,9 @@ from .product import Product
 from .inventory import Inventory
 from .warehouse import Warehouse
 from app.models.inventory_log import InventoryLog
+from .bom import BOM
+from .bom_item import BOMItem
+from .bom_version import BOMVersion
+from .production_order import ProductionOrder
+from .material_reservation import MaterialReservation
+from .purchase_request import PurchaseRequest
