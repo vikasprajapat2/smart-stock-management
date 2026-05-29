@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { Camera, CameraOff, Sparkles, Volume2, VolumeX, Check } from 'lucide-react';
+import { Camera, CameraOff, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { playSuccessBeep, triggerHapticFeedback } from '../utils/parser';
 
 interface ScannerActiveProps {
@@ -23,7 +23,7 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const [scanCompleted, setScanCompleted] = useState<boolean>(false);
+  const [_scanCompleted, setScanCompleted] = useState<boolean>(false);
   const lastScannedTextRef = useRef<string>('');
   const lastScannedTimeRef = useRef<number>(0);
   
