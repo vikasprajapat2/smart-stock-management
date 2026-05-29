@@ -16,3 +16,4 @@ from .bom_version import BOMVersion
 from .production_order import ProductionOrder
 from .material_reservation import MaterialReservation
 from .purchase_request import PurchaseRequest
+from .stock_movement import StockMovement

@@ -22,7 +22,6 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
   const [torchActive, setTorchActive] = useState<boolean>(false);
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
-
   const lastScannedTextRef = useRef<string>('');
   const lastScannedTimeRef = useRef<number>(0);
   

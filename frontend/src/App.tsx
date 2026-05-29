@@ -9,12 +9,12 @@ import { ScannerUpload } from './components/ScannerUpload';
 import { ResultPanel } from './components/ResultPanel';
 import { HistoryPanel, type HistoryItem } from './components/HistoryPanel';
 import { InventoryManager } from './components/InventoryManager';
+import { BOMManager } from './components/BOMManager';
 import {
   DashboardView, WarehouseView, SuppliersView,
   PurchaseOrdersView, OrdersView, UsersView, CategoriesView
 } from './components/ERPViews';
 import { InventoryRecordsView } from './components/InventoryRecordsView';
-import { BOMManager } from './components/BOMManager';
 import { ProductionManager } from './components/ProductionManager';
 import { PurchaseRequestsManager } from './components/PurchaseRequestsManager';
 import { InventoryLogsView } from './components/InventoryLogsView';
@@ -23,7 +23,7 @@ import { checkBackendConnection, fetchWarehouses, submitProductScan, fetchNotifi
 import LoginModal from './components/LoginModal';
 import type { Warehouse as BackendWarehouse, Notification as BackendNotification } from './utils/api';
 
-type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'inventoryRecords' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history' | 'boms' | 'productionOrders' | 'purchaseRequests' | 'inventoryLogs';
+type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'inventoryRecords' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history' | 'boms' | 'bom' | 'productionOrders' | 'purchaseRequests' | 'inventoryLogs';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -491,6 +491,14 @@ function App() {
                 {!sidebarCollapsed && <span>Categories Setup</span>}
               </button>
 
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'bom' ? 'active' : ''}`}
+                onClick={() => handleTabChange('bom')}
+              >
+                <Layers size={18} />
+                {!sidebarCollapsed && <span>BOM & Assembly</span>}
+              </button>
+
               <div className="nav-section-title">{!sidebarCollapsed && 'Manufacturing & MRP'}</div>
 
               <button
@@ -578,7 +586,7 @@ function App() {
             <span style={{ fontSize: '1.2rem' }}>📦</span>
             <div style={{ textTransform: 'capitalize' }}>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>
-                {activeTab === 'webcam' ? 'Live Camera Decoder' : activeTab === 'inventory' ? 'Products & Stock Management' : activeTab === 'inventoryRecords' ? 'Direct Inventory Records' : activeTab === 'procurement' ? 'Procurement purchase invoices' : activeTab === 'dashboard' ? 'ERP Dashboard Summary' : activeTab === 'boms' ? 'BOM Recipes & Cost rollup' : activeTab === 'productionOrders' ? 'Manufacturing Work Orders' : activeTab === 'purchaseRequests' ? 'Automated Procurement Requests' : activeTab + ' hub'}
+                {activeTab === 'webcam' ? 'Live Camera Decoder' : activeTab === 'inventory' ? 'Products & Stock Management' : activeTab === 'inventoryRecords' ? 'Direct Inventory Records' : activeTab === 'procurement' ? 'Procurement purchase invoices' : activeTab === 'dashboard' ? 'ERP Dashboard Summary' : activeTab === 'boms' ? 'BOM Recipes & Cost rollup' : activeTab === 'bom' ? 'BOM & Production Runs' : activeTab === 'productionOrders' ? 'Manufacturing Work Orders' : activeTab === 'purchaseRequests' ? 'Automated Procurement Requests' : activeTab + ' hub'}
               </h3>
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Enterprise stock logistical portal</p>
             </div>
@@ -719,8 +727,8 @@ function App() {
             </div>
           )}
 
-          {activeTab === 'boms' && isBackendConnected && (
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+          {(activeTab === 'boms' || activeTab === 'bom') && isBackendConnected && (
+            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
               <BOMManager />
             </div>
           )}
@@ -736,7 +744,6 @@ function App() {
               <PurchaseRequestsManager />
             </div>
           )}
-
           {/* Dual columns for scanners and history logs */}
           {(activeTab === 'webcam' || activeTab === 'upload' || activeTab === 'history') && (
             <div className="dashboard-grid">

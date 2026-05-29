@@ -45,7 +45,8 @@ from app.models import (
     bom_version,
     production_order,
     material_reservation,
-    purchase_request
+    purchase_request,
+    stock_movement
 )
 
 # CREATE TABLES
