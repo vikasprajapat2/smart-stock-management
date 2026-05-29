@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from sqlalchemy.sql import func
 
 from app.database import Base
 
@@ -33,4 +34,19 @@ class ProductionOrder(Base):
     purchase_requests = relationship(
         "PurchaseRequest",
         back_populates="production_order"
+    )
+    production_order_number = Column(
+        String,
+        unique=True,
+        nullable=False
+    )
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
     )
