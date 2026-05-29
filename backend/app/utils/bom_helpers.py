@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session
 from decimal import Decimal
 from sqlalchemy import func
+from app.utils.inventory_helpers import (
+    log_inventory_change
+)
 
 from app.models.bom import BOM
 from app.models.bom_item import BOMItem
@@ -128,6 +131,13 @@ def reserve_stock_for_production(db: Session, production_order: ProductionOrder,
             Inventory.product_id == mat_id,
             Inventory.warehouse_id == warehouse_id
         ).first()
+        print(
+            f"[RESERVE] Product={mat_id}, "
+            f"Warehouse={warehouse_id}, "
+            f"Inventory={inv.quantity if inv else 0}, "
+            f"Reserved={inv.quantity_reserved if inv else 0}, "
+            f"Required={required_qty}"
+        )
 
         if not inv:
             # Create empty inventory if it doesn't exist
@@ -135,8 +145,25 @@ def reserve_stock_for_production(db: Session, production_order: ProductionOrder,
             db.add(inv)
             db.flush()
 
-        available_qty = Decimal(str(max(0, inv.quantity - inv.quantity_reserved)))
-        reserve_qty = min(required_qty, available_qty)
+        available_qty = Decimal(
+            str(
+                max(
+                    0,
+                    inv.quantity - inv.quantity_reserved
+                )
+            )
+        )
+
+        reserve_qty = min(
+            required_qty,
+            available_qty
+        )
+
+        print(
+            f"[AVAILABLE] Product={mat_id}, "
+            f"Available={available_qty}, "
+            f"ReserveQty={reserve_qty}"
+        )
 
         if reserve_qty > 0:
             inv.quantity_reserved += int(reserve_qty)
@@ -186,8 +213,26 @@ def release_reservations_and_consume_stock(db: Session, production_order: Produc
             if inv:
                 # Decrement actual quantity and reserved quantity
                 qty_to_consume = int(res.quantity_reserved)
-                inv.quantity = max(0, inv.quantity - qty_to_consume)
-                inv.quantity_reserved = max(0, inv.quantity_reserved - qty_to_consume)
+
+                old_qty = inv.quantity
+
+                inv.quantity = max(
+                    0,
+                    inv.quantity - qty_to_consume
+                )
+
+                inv.quantity_reserved = max(
+                    0,
+                    inv.quantity_reserved - qty_to_consume
+                )
+
+                log_inventory_change(
+                    db=db,
+                    product_id=inv.product_id,
+                    old_qty=old_qty,
+                    new_qty=inv.quantity,
+                    action="PRODUCTION_CONSUME"
+                )
             
             res.status = "COMPLETED"
             db.flush()
@@ -208,6 +253,18 @@ def release_reservations_and_consume_stock(db: Session, production_order: Produc
         db.add(finished_inv)
         db.flush()
 
-    finished_inv.quantity += production_order.quantity_to_produce
+    old_qty = finished_inv.quantity
+
+    finished_inv.quantity += (
+        production_order.quantity_to_produce
+    )
+
+    log_inventory_change(
+        db=db,
+        product_id=production_order.product_id,
+        old_qty=old_qty,
+        new_qty=finished_inv.quantity,
+        action="PRODUCTION_OUTPUT"
+    )
     db.commit()
     return True
