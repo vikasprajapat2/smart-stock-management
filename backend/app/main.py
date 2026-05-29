@@ -25,6 +25,8 @@ from app.routes.users import router as users_router
 from app.routes.boms import router as bom_router
 from app.routes.production_orders import router as production_order_router
 from app.routes.purchase_requests import router as purchase_request_router
+from app.routes.grn import router as grn_router
+from app.routes.stock_movements import router as stock_movements_router
 
 # IMPORT ALL MODELS
 from app.models import (
@@ -64,6 +66,12 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
+        "http://localhost:5176",
+        "http://127.0.0.1:5176",
         "http://192.168.1.136:5173",
         "http://100.80.224.93:5173"
     ],
@@ -316,3 +324,7 @@ app.include_router(bom_router)
 app.include_router(production_order_router)
 
 app.include_router(purchase_request_router)
+
+app.include_router(grn_router)
+
+app.include_router(stock_movements_router)

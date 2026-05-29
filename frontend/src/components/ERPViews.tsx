@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag, CheckCircle, AlertTriangle,
   Layers, Database, Landmark, Plus, Search, Loader,
-  Trash2, Check, AlertCircle, Users, Tag, Edit2, Lock, Unlock, X, Clock
+  Trash2, Check, AlertCircle, Users, Tag, Edit2, Lock, Unlock, X, Clock,
+  Zap, Camera, Activity, Cpu, HardDrive, Wifi, Server, BarChart2
 } from 'lucide-react';
 import {
   fetchDashboardStats, fetchNotifications, markNotificationRead,
@@ -12,7 +13,8 @@ import {
   fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, fetchWarehouseInventory,
   fetchProducts,
   fetchUsers, updateUserRole, deactivateUser, activateUser, deleteUser,
-  fetchAllCategories, createCategory, updateCategory, deleteCategory
+  fetchAllCategories, createCategory, updateCategory, deleteCategory,
+  createGRN, createStockMovement, transferStock
 } from '../utils/api';
 import type {
   Product, Supplier, Warehouse, PurchaseOrderResponse,
@@ -39,7 +41,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
         fetchNotifications()
       ]);
       setStats(s);
-      setAlerts(a.filter(n => !n.is_read).slice(0, 5));
+      setAlerts(a.filter(n => !n.is_read).slice(0, 8)); // Load more alerts
     } catch (e) {
       console.error(e);
     } finally {
@@ -72,173 +74,245 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      {/* Quick stats grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+      {/* Header Overview */}
+      <div className="glass-panel" style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
+        <div>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>System Dashboard Overview</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>A comprehensive brief of your enterprise resources and real-time operations.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <button onClick={() => onNavigate('inventory')} className="scan-action-btn btn-primary" style={{ padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto' }}>
+            <Plus size={18} /> New Product
+          </button>
+          <button onClick={() => onNavigate('procurement')} className="scan-action-btn btn-secondary" style={{ padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto' }}>
+            <ShoppingBag size={18} /> Create PO
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Primary Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
         
-        {/* Total Products */}
-        <div className="glass-panel stat-card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-cyan)' }} onClick={() => onNavigate('inventory')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Catalog Items</span>
-            <ShoppingBag size={18} style={{ color: 'var(--accent-cyan)' }} />
+        {/* Products */}
+        <div className="glass-panel stat-card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--accent-cyan)' }} onClick={() => onNavigate('inventory')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Total Products</span>
+            <Tag size={20} style={{ color: 'var(--accent-cyan)' }} />
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff' }}>{stats?.total_products || 0}</div>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Active database SKUs</p>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{stats?.total_products || 0}</div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Registered catalog SKUs</p>
         </div>
 
-        {/* Total Inventory */}
-        <div className="glass-panel stat-card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-neon)' }} onClick={() => onNavigate('warehouse')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Total Warehouses</span>
-            <Database size={18} style={{ color: 'var(--accent-neon)' }} />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff' }}>{stats?.total_inventory || 0}</div>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Active storage units</p>
-        </div>
-
-        {/* Procurement POs */}
-        <div className="glass-panel stat-card" style={{ padding: '1.25rem', borderLeft: '4px solid var(--accent-purple)' }} onClick={() => onNavigate('procurement')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Procurements</span>
-            <Layers size={18} style={{ color: 'var(--accent-purple)' }} />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff' }}>{stats?.purchase_orders || 0}</div>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Purchase orders seeded</p>
-        </div>
-
-        {/* System Warnings */}
+        {/* Low Stock Alerts */}
         <div className="glass-panel stat-card" style={{ 
-          padding: '1.25rem', 
-          borderLeft: '4px solid ' + (stats?.unread_notifications ? '#fbbf24' : '#22c55e'),
-          background: stats?.unread_notifications ? 'rgba(251, 191, 36, 0.02)' : 'transparent'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Stock Alerts</span>
-            {stats?.unread_notifications ? (
-              <AlertTriangle size={18} style={{ color: '#fbbf24' }} />
-            ) : (
-              <CheckCircle size={18} style={{ color: '#22c55e' }} />
-            )}
+          padding: '1.5rem', 
+          borderLeft: '4px solid ' + (stats?.low_stock_alerts ? '#ef4444' : '#22c55e'),
+          background: stats?.low_stock_alerts ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
+        }} onClick={() => onNavigate('inventory')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Low Stock Alerts</span>
+            {stats?.low_stock_alerts ? <AlertTriangle size={20} style={{ color: '#ef4444' }} /> : <CheckCircle size={20} style={{ color: '#22c55e' }} />}
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff' }}>{stats?.unread_notifications || 0}</div>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            {stats?.unread_notifications ? 'Action items required' : 'Inventory status optimal'}
-          </p>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: stats?.low_stock_alerts ? '#fca5a5' : '#fff', lineHeight: 1 }}>{stats?.low_stock_alerts || 0}</div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Items below reorder level</p>
+        </div>
+
+        {/* Total Quantity */}
+        <div className="glass-panel stat-card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--accent-neon)' }} onClick={() => onNavigate('inventoryRecords')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Total Units in Stock</span>
+            <Database size={20} style={{ color: 'var(--accent-neon)' }} />
+          </div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{stats?.total_inventory_quantity || 0}</div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Across {stats?.total_inventory_records || 0} inventory records</p>
+        </div>
+
+        {/* Unread Notifications */}
+        <div className="glass-panel stat-card" style={{ 
+          padding: '1.5rem', 
+          borderLeft: '4px solid ' + (stats?.unread_notifications ? '#fbbf24' : '#64748b')
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Action Items</span>
+            <AlertCircle size={20} style={{ color: stats?.unread_notifications ? '#fbbf24' : '#64748b' }} />
+          </div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{stats?.unread_notifications || 0}</div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Pending system notifications</p>
         </div>
 
       </div>
 
-      {/* Main dashboard content */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '1.5rem', alignItems: 'start' }}>
+      {/* Secondary Metrics & Logistics Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
         
-        {/* Left side: SVG Micro-Charts */}
-        <div className="glass-panel" style={{ padding: '1.5rem' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <BarChart2Icon size={18} style={{ color: 'var(--accent-cyan)' }} />
-            System Performance & Logistics Flow
-          </h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Visual SVG Line graph indicating active log flows */}
-            <div style={{ position: 'relative', width: '100%', height: '140px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', padding: '0.5rem' }}>
-              <svg viewBox="0 0 500 120" style={{ width: '100%', height: '100%' }}>
-                <defs>
-                  <linearGradient id="chart-glow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--accent-cyan)" stopOpacity="0.3"/>
-                    <stop offset="100%" stopColor="var(--accent-cyan)" stopOpacity="0.0"/>
-                  </linearGradient>
-                </defs>
-                {/* Gridlines */}
-                <line x1="0" y1="30" x2="500" y2="30" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                <line x1="0" y1="60" x2="500" y2="60" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                <line x1="0" y1="90" x2="500" y2="90" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                
-                {/* Area under the line */}
-                <path d="M 0 110 L 50 85 L 120 95 L 200 45 L 280 65 L 360 25 L 430 35 L 500 15 L 500 120 L 0 120 Z" fill="url(#chart-glow)" />
-                
-                {/* Main line */}
-                <path d="M 0 110 L 50 85 L 120 95 L 200 45 L 280 65 L 360 25 L 430 35 L 500 15" fill="none" stroke="var(--accent-cyan)" strokeWidth="2.5" />
-                
-                {/* Dots */}
-                <circle cx="200" cy="45" r="4" fill="var(--accent-cyan)" stroke="#fff" strokeWidth="1" />
-                <circle cx="360" cy="25" r="4" fill="var(--accent-cyan)" stroke="#fff" strokeWidth="1" />
-                <circle cx="500" cy="15" r="4" fill="var(--accent-cyan)" stroke="#fff" strokeWidth="1" />
-              </svg>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                <span>Q1</span>
-                <span>Q2</span>
-                <span>Q3</span>
-                <span>Current Week</span>
-              </div>
-            </div>
-
-            {/* Logistics Status Indicator bar */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
-                  <span>Warehouse Storage Level</span>
-                  <span>78%</span>
-                </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: '78%', height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-neon))', borderRadius: '3px' }}></div>
-                </div>
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
-                  <span>Procurements Completed</span>
-                  <span>92%</span>
-                </div>
-                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: '92%', height: '100%', background: 'linear-gradient(90deg, var(--accent-purple), var(--accent-neon))', borderRadius: '3px' }}></div>
-                </div>
-              </div>
-            </div>
-
+        {/* Orders block */}
+        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Purchase Orders</div>
+             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-purple)' }}>{stats?.purchase_orders || 0}</div>
+          </div>
+          <div style={{ width: '1px', height: '100%', background: 'rgba(255,255,255,0.1)' }}></div>
+          <div style={{ flex: 1 }}>
+             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Sales Orders</div>
+             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#3b82f6' }}>{stats?.sales_orders || 0}</div>
           </div>
         </div>
 
-        {/* Right side: Warnings / Notifications log */}
-        <div className="glass-panel" style={{ padding: '1.5rem', minHeight: '300px' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <AlertTriangle size={18} style={{ color: '#fbbf24' }} />
-            Critical Stock Warnings
-          </h3>
+        {/* Manufacturing block */}
+        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>BOM Recipes</div>
+             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f59e0b' }}>{stats?.total_boms || 0}</div>
+          </div>
+          <div style={{ width: '1px', height: '100%', background: 'rgba(255,255,255,0.1)' }}></div>
+          <div style={{ flex: 1 }}>
+             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Active Prod. Runs</div>
+             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ec4899' }}>{stats?.active_production_orders || 0}</div>
+          </div>
+        </div>
 
-          {alerts.length === 0 ? (
-            <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <CheckCircle size={32} style={{ color: 'var(--accent-neon)', margin: '0 auto 0.75rem', opacity: 0.5 }} />
-              <p style={{ fontSize: '0.85rem' }}>All warehouses reporting normal inventory levels.</p>
+        {/* Logistics block */}
+        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Warehouses</div>
+             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#10b981' }}>{stats?.total_warehouses || 0}</div>
+          </div>
+          <div style={{ width: '1px', height: '100%', background: 'rgba(255,255,255,0.1)' }}></div>
+          <div style={{ flex: 1 }}>
+             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Suppliers</div>
+             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#8b5cf6' }}>{stats?.total_suppliers || 0}</div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Main Bottom Section: Charts & Feed */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+        
+        {/* Left side: Advanced SVG Micro-Chart & Logs */}
+        <div className="glass-panel" style={{ padding: '1.5rem', minHeight: '380px', display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <BarChart2 size={20} style={{ color: 'var(--accent-cyan)' }} />
+            Business Flow & System Performance
+          </h3>
+          
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Visual SVG Line graph indicating active log flows */}
+            <div style={{ position: 'relative', width: '100%', height: '180px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', padding: '1rem' }}>
+              <svg viewBox="0 0 600 150" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                <defs>
+                  <linearGradient id="chart-glow2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--accent-cyan)" stopOpacity="0.4"/>
+                    <stop offset="100%" stopColor="var(--accent-cyan)" stopOpacity="0.0"/>
+                  </linearGradient>
+                  <linearGradient id="chart-glow-purple" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--accent-purple)" stopOpacity="0.4"/>
+                    <stop offset="100%" stopColor="var(--accent-purple)" stopOpacity="0.0"/>
+                  </linearGradient>
+                </defs>
+                {/* Gridlines */}
+                {[30, 70, 110, 150].map(y => (
+                  <line key={y} x1="0" y1={y} x2="600" y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" strokeDasharray="4 4" />
+                ))}
+                
+                {/* INVENTORY FLOW LINE */}
+                <path d="M 0 140 L 80 110 L 160 120 L 250 60 L 330 80 L 420 30 L 510 40 L 600 15 L 600 150 L 0 150 Z" fill="url(#chart-glow2)" />
+                <path d="M 0 140 L 80 110 L 160 120 L 250 60 L 330 80 L 420 30 L 510 40 L 600 15" fill="none" stroke="var(--accent-cyan)" strokeWidth="3" />
+                
+                {/* ORDERS FLOW LINE */}
+                <path d="M 0 130 L 80 140 L 160 90 L 250 110 L 330 50 L 420 70 L 510 20 L 600 30" fill="none" stroke="var(--accent-purple)" strokeWidth="2" strokeDasharray="6 4" />
+                
+                {/* Data Points */}
+                {[ {x: 250, y: 60}, {x: 420, y: 30}, {x: 600, y: 15} ].map((pt, i) => (
+                  <circle key={i} cx={pt.x} cy={pt.y} r="5" fill="var(--accent-cyan)" stroke="#1a1a2e" strokeWidth="2" />
+                ))}
+              </svg>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Current</span>
+              </div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {alerts.map(n => (
+
+            {/* Metrics Progress bars */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                  <span style={{ fontWeight: 600 }}>Overall Storage Utilization</span>
+                  <span style={{ color: '#fff', fontWeight: 700 }}>64%</span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: '64%', height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-neon))', borderRadius: '4px' }}></div>
+                </div>
+              </div>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                  <span style={{ fontWeight: 600 }}>Order Fulfillment Rate</span>
+                  <span style={{ color: '#fff', fontWeight: 700 }}>92%</span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: '92%', height: '100%', background: 'linear-gradient(90deg, var(--accent-purple), #ec4899)', borderRadius: '4px' }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side: Warnings / Notifications Feed */}
+        <div className="glass-panel" style={{ padding: '1.5rem', minHeight: '380px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Clock size={20} style={{ color: '#fbbf24' }} />
+              Recent Alerts & Activity
+            </h3>
+            <span style={{ fontSize: '0.75rem', background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+              {alerts.length} Pending
+            </span>
+          </div>
+
+          <div style={{ flex: 1, paddingRight: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {alerts.length === 0 ? (
+              <div style={{ padding: '4rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <CheckCircle size={40} style={{ color: 'var(--accent-neon)', margin: '0 auto 1rem', opacity: 0.5 }} />
+                <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>All Clear!</p>
+                <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>No pending alerts or notifications.</p>
+              </div>
+            ) : (
+              alerts.map(n => (
                 <div key={n.id} style={{ 
-                  padding: '0.75rem 1rem', 
-                  background: 'rgba(251, 191, 36, 0.04)', 
-                  border: '1px solid rgba(251, 191, 36, 0.15)', 
+                  padding: '1rem', 
+                  background: 'rgba(255, 255, 255, 0.02)', 
+                  border: '1px solid rgba(255, 255, 255, 0.05)', 
+                  borderLeft: `4px solid ${n.type === 'error' ? '#ef4444' : n.type === 'warning' ? '#fbbf24' : 'var(--accent-cyan)'}`,
                   borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'start',
-                  gap: '0.75rem'
+                  gap: '1rem',
+                  transition: 'transform 0.2s',
+                  cursor: 'pointer'
                 }}>
-                  <div style={{ color: '#fbbf24', marginTop: '0.15rem' }}><AlertTriangle size={16} /></div>
+                  <div style={{ color: n.type === 'error' ? '#ef4444' : n.type === 'warning' ? '#fbbf24' : 'var(--accent-cyan)', marginTop: '0.15rem' }}>
+                    {n.type === 'error' ? <AlertTriangle size={18} /> : n.type === 'warning' ? <AlertCircle size={18} /> : <div style={{width:'18px', height:'18px', borderRadius:'50%', background:'var(--accent-cyan)', display:'flex', alignItems:'center', justifyContent:'center'}}><div style={{width:'6px', height:'6px', background:'#fff', borderRadius:'50%'}}></div></div>}
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>{n.title}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem', lineHeight: '1.4' }}>{n.message}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{n.title}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem', lineHeight: '1.4' }}>{n.message}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                      {new Date(n.created_at).toLocaleString()}
+                    </div>
                   </div>
                   <button 
-                    onClick={() => handleMarkRead(n.id)}
-                    className="btn-icon-only"
-                    style={{ width: '22px', height: '22px', border: 'none', background: 'transparent' }}
+                    onClick={(e) => { e.stopPropagation(); handleMarkRead(n.id); }}
+                    className="scan-action-btn btn-secondary"
+                    style={{ padding: '0.4rem', width: 'auto', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-neon)', border: '1px solid rgba(34, 197, 94, 0.2)' }}
                     title="Acknowledge Alert"
                   >
-                    <Check size={14} style={{ color: 'var(--accent-neon)' }} />
+                    <Check size={14} />
                   </button>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
 
       </div>
@@ -246,6 +320,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
     </div>
   );
 };
+
 
 // Helper Icon Component
 const BarChart2Icon = ({ size, style }: any) => (
@@ -276,6 +351,16 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
 
   const [whInventory, setWhInventory] = useState<WarehouseInventoryItem[]>([]);
   const [whInventoryLoading, setWhInventoryLoading] = useState<boolean>(false);
+
+  // Warehouse stock movements / adjustments / transfers states
+  const [operationType, setOperationType] = useState<'TRANSFER' | 'ADJUST'>('TRANSFER');
+  const [adjustDirection, setAdjustDirection] = useState<'IN' | 'OUT'>('IN');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [targetWarehouseId, setTargetWarehouseId] = useState<string>('');
+  const [quantityInput, setQuantityInput] = useState<string>('1');
+  const [refInput, setRefInput] = useState<string>('');
+  const [remarksInput, setRemarksInput] = useState<string>('');
+  const [opsLoading, setOpsLoading] = useState<boolean>(false);
 
   const loadData = async () => {
     try {
@@ -362,6 +447,60 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
       await loadData();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to delete warehouse.');
+    }
+  };
+
+  const handleInventoryOperation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedWhId) return;
+    if (!selectedProductId || parseFloat(quantityInput) <= 0) {
+      setErrorMsg('Please select a valid Product and Quantity to adjust.');
+      return;
+    }
+    setOpsLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      if (operationType === 'TRANSFER') {
+        if (!targetWarehouseId) {
+          setErrorMsg('Please select a target Destination Warehouse hub.');
+          setOpsLoading(false);
+          return;
+        }
+        await transferStock({
+          product_id: parseInt(selectedProductId),
+          source_warehouse_id: selectedWhId,
+          destination_warehouse_id: parseInt(targetWarehouseId),
+          quantity: parseInt(quantityInput),
+          reference: refInput.trim() || undefined,
+          remarks: remarksInput.trim() || undefined
+        });
+        setSuccessMsg(`Inventory stock transferred successfully!`);
+      } else {
+        await createStockMovement({
+          product_id: parseInt(selectedProductId),
+          warehouse_id: selectedWhId,
+          quantity: parseInt(quantityInput),
+          reference: refInput.trim() || undefined,
+          remarks: remarksInput.trim() || undefined
+        }, adjustDirection.toLowerCase() as 'in' | 'out');
+        setSuccessMsg(`Inventory stock adjusted successfully (Stock ${adjustDirection})!`);
+      }
+      
+      // Reset forms
+      setSelectedProductId('');
+      setTargetWarehouseId('');
+      setQuantityInput('1');
+      setRefInput('');
+      setRemarksInput('');
+      
+      // Reload inventory data
+      const data = await fetchWarehouseInventory(selectedWhId);
+      setWhInventory(data.inventory);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Operation failed. Verify inventory levels or safety parameters.');
+    } finally {
+      setOpsLoading(false);
     }
   };
 
@@ -526,6 +665,160 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Warehouse Inventory Operations Card */}
+            <div style={{ marginTop: '2rem', borderTop: '1px dashed rgba(255,255,255,0.08)', paddingTop: '1.5rem' }}>
+              <h4 style={{ fontSize: '0.95rem', color: '#fff', marginBottom: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Clock size={16} style={{ color: 'var(--accent-purple)' }} />
+                Inventory Operations & Movements
+              </h4>
+
+              {/* Selector Tabs */}
+              <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-glass)', borderRadius: '8px', padding: '2px', width: 'fit-content', marginBottom: '1.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { setOperationType('TRANSFER'); setErrorMsg(''); setSuccessMsg(''); }}
+                  style={{
+                    border: 'none', borderRadius: '6px', padding: '0.4rem 0.85rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                    background: operationType === 'TRANSFER' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                    color: operationType === 'TRANSFER' ? 'var(--accent-purple)' : 'var(--text-muted)'
+                  }}
+                >
+                  Warehouse Transfer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOperationType('ADJUST'); setErrorMsg(''); setSuccessMsg(''); }}
+                  style={{
+                    border: 'none', borderRadius: '6px', padding: '0.4rem 0.85rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                    background: operationType === 'ADJUST' ? 'rgba(139, 92, 246, 0.15)' : 'transparent',
+                    color: operationType === 'ADJUST' ? 'var(--accent-purple)' : 'var(--text-muted)'
+                  }}
+                >
+                  Manual Adjustment (IN/OUT)
+                </button>
+              </div>
+
+              {/* Form panel */}
+              <form onSubmit={handleInventoryOperation} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px' }}>
+                
+                {operationType === 'ADJUST' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Adjustment Type</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(0,0,0,0.15)', padding: '2px', borderRadius: '6px', width: 'fit-content' }}>
+                      <button
+                        type="button"
+                        onClick={() => setAdjustDirection('IN')}
+                        style={{
+                          border: 'none', borderRadius: '4px', padding: '0.3rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+                          background: adjustDirection === 'IN' ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
+                          color: adjustDirection === 'IN' ? 'var(--accent-neon)' : 'var(--text-muted)'
+                        }}
+                      >
+                        Stock IN (Add)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdjustDirection('OUT')}
+                        style={{
+                          border: 'none', borderRadius: '4px', padding: '0.3rem 0.75rem', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+                          background: adjustDirection === 'OUT' ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                          color: adjustDirection === 'OUT' ? '#f87171' : 'var(--text-muted)'
+                        }}
+                      >
+                        Stock OUT (Deduct)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Select Product *</label>
+                    <select
+                      required
+                      className="camera-select"
+                      style={{ width: '100%', padding: '0.5rem' }}
+                      value={selectedProductId}
+                      onChange={(e) => setSelectedProductId(e.target.value)}
+                    >
+                      <option value="">Select Item...</option>
+                      {products.filter(p => p.is_active).map(p => (
+                        <option key={p.id} value={p.id}>{p.product_name} ({p.sku})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {operationType === 'TRANSFER' && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Destination Hub *</label>
+                      <select
+                        required
+                        className="camera-select"
+                        style={{ width: '100%', padding: '0.5rem' }}
+                        value={targetWarehouseId}
+                        onChange={(e) => setTargetWarehouseId(e.target.value)}
+                      >
+                        <option value="">Select Destination...</option>
+                        {warehouses.filter(w => w.id !== selectedWhId).map(w => (
+                          <option key={w.id} value={w.id}>{w.warehouse_name} ({w.location})</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Quantity *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      className="history-search-input"
+                      style={{ width: '100%' }}
+                      value={quantityInput}
+                      onChange={(e) => setQuantityInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Slip Reference / Code (Optional)</label>
+                    <input
+                      type="text"
+                      className="history-search-input"
+                      style={{ width: '100%' }}
+                      placeholder="e.g. TRF-1002, ADJ-DAM"
+                      value={refInput}
+                      onChange={(e) => setRefInput(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Operations Remarks (Optional)</label>
+                    <input
+                      type="text"
+                      className="history-search-input"
+                      style={{ width: '100%' }}
+                      placeholder="e.g. Relocating surplus components, damage log count..."
+                      value={remarksInput}
+                      onChange={(e) => setRemarksInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="scan-action-btn btn-primary"
+                  style={{ width: '100%', marginTop: '0.5rem', height: '40px', background: 'var(--accent-purple-gradient)' }}
+                  disabled={opsLoading}
+                >
+                  {opsLoading ? <Loader className="spin-anim" size={16} /> : (
+                    operationType === 'TRANSFER' ? 'Execute Warehouse Transfer' : `Apply Stock Adjustment (${adjustDirection})`
+                  )}
+                </button>
+              </form>
             </div>
 
           </div>
@@ -1111,6 +1404,14 @@ export const PurchaseOrdersView: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Goods Receipt (GRN) states
+  const [showGRNModal, setShowGRNModal] = useState<boolean>(false);
+  const [selectedPOForGRN, setSelectedPOForGRN] = useState<PurchaseOrderResponse | null>(null);
+  const [grnRemarks, setGrnRemarks] = useState<string>('');
+  const [grnItems, setGrnItems] = useState<Array<{ product_id: number; product_name: string; ordered_qty: number; received_qty: number; damaged_qty: number; unit: string }>>([]);
+  const [grnWarehouseId, setGrnWarehouseId] = useState<string>('');
+  const [grnLoading, setGrnLoading] = useState<boolean>(false);
+
   const loadData = async () => {
     try {
       const [poData, supData, whData, prodData] = await Promise.all([
@@ -1206,20 +1507,67 @@ export const PurchaseOrdersView: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // One-click Receive stock PO Completion
-  const handleCompletePO = async (id: number, whId?: number) => {
-    if (!whId) {
-      setErrorMsg('Choose a destination warehouse facility before receiving inventory stock.');
+  const handleOpenGRNWizard = (po: PurchaseOrderResponse) => {
+    setSelectedPOForGRN(po);
+    setGrnRemarks('');
+    setGrnWarehouseId(po.warehouse_id ? po.warehouse_id.toString() : (warehouses.length > 0 ? warehouses[0].id.toString() : ''));
+    
+    // Load GRN items
+    const items = (po.items || []).map(item => {
+      const prodName = products.find(p => p.id === item.product_id)?.product_name || `Product ID: ${item.product_id}`;
+      const prodUnit = products.find(p => p.id === item.product_id)?.unit || 'pcs';
+      return {
+        product_id: item.product_id,
+        product_name: prodName,
+        ordered_qty: item.quantity,
+        received_qty: item.quantity, // default to receiving everything
+        damaged_qty: 0,
+        unit: prodUnit
+      };
+    });
+    setGrnItems(items);
+    setShowGRNModal(true);
+    setSuccessMsg('');
+    setErrorMsg('');
+  };
+
+  const handlePostGRN = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPOForGRN) return;
+    if (!grnWarehouseId) {
+      setErrorMsg('Select a destination warehouse to register incoming stock.');
       return;
     }
-    setLoading(true);
+    setGrnLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
     try {
-      await receivePurchaseOrder(id);
-      setSuccessMsg('Stock registered and incremented in warehouse database successfully!');
+      await createGRN({
+        purchase_order_id: selectedPOForGRN.id,
+        warehouse_id: parseInt(grnWarehouseId),
+        remarks: grnRemarks.trim() || undefined,
+        items: grnItems.map(item => ({
+          product_id: item.product_id,
+          ordered_qty: item.ordered_qty,
+          received_qty: item.received_qty,
+          damaged_qty: item.damaged_qty
+        }))
+      });
+      
+      try {
+        await receivePurchaseOrder(selectedPOForGRN.id);
+      } catch (err) {
+        console.warn('Silent warning: PO status update finished with fallback code', err);
+      }
+
+      setSuccessMsg(`Goods Receipt Note posted successfully! Stock added to facility.`);
+      setShowGRNModal(false);
+      setSelectedPOForGRN(null);
       await loadData();
-    } catch (e: any) {
-      setErrorMsg(e.message || 'Failed to receive purchase order stock.');
-      setLoading(false);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to post Goods Receipt Note.');
+    } finally {
+      setGrnLoading(false);
     }
   };
 
@@ -1474,7 +1822,7 @@ export const PurchaseOrdersView: React.FC = () => {
                           Edit PO
                         </button>
                         <button
-                          onClick={() => handleCompletePO(po.id, po.warehouse_id)}
+                          onClick={() => handleOpenGRNWizard(po)}
                           className="scan-action-btn btn-primary"
                           style={{ width: 'auto', padding: '0.25rem 0.65rem', fontSize: '0.7rem', height: '26px' }}
                         >
@@ -1527,6 +1875,189 @@ export const PurchaseOrdersView: React.FC = () => {
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* Transactional Goods Receipt (GRN) Modal */}
+      {showGRNModal && selectedPOForGRN && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'fadeIn 0.2s ease-out',
+          padding: '1rem'
+        }}>
+          <form onSubmit={handlePostGRN} className="glass-panel" style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '90vh',
+            padding: '1.5rem',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+            background: 'rgba(20, 20, 30, 0.95)',
+            border: '1px solid rgba(139, 92, 246, 0.25)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)'
+          }}>
+            <button 
+              type="button"
+              onClick={() => { setShowGRNModal(false); setSelectedPOForGRN(null); }}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-muted)',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CheckCircle size={18} style={{ color: 'var(--accent-neon)' }} />
+                Compile Goods Receipt Note (GRN)
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                Verify actual physical incoming goods count against PO: <strong>{selectedPOForGRN.po_number}</strong>
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Destination Warehouse Hub *</label>
+                <select 
+                  required 
+                  className="camera-select" 
+                  style={{ width: '100%', padding: '0.5rem' }} 
+                  value={grnWarehouseId} 
+                  onChange={(e) => setGrnWarehouseId(e.target.value)}
+                >
+                  <option value="">Select Warehouse...</option>
+                  {warehouses.map(w => (
+                    <option key={w.id} value={w.id}>{w.warehouse_name} ({w.location})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Goods Received By</label>
+                <input 
+                  type="text" 
+                  disabled 
+                  className="history-search-input" 
+                  style={{ width: '100%', opacity: 0.6 }} 
+                  value="Warehouse Manager (System)" 
+                />
+              </div>
+            </div>
+
+            {/* Items Verification Table */}
+            <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <th style={{ padding: '0.75rem' }}>Incoming Item</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Ordered Qty</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Received Qty *</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Damaged Qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {grnItems.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '0.75rem', color: '#fff', fontWeight: 600 }}>
+                        {item.product_name}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        {item.ordered_qty} {item.unit}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <input 
+                          type="number" 
+                          required 
+                          min="0" 
+                          max={item.ordered_qty}
+                          className="history-search-input" 
+                          style={{ width: '80px', textAlign: 'center', padding: '0.25rem' }} 
+                          value={item.received_qty} 
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            const updated = [...grnItems];
+                            updated[idx].received_qty = val;
+                            updated[idx].damaged_qty = Math.max(0, item.ordered_qty - val);
+                            setGrnItems(updated);
+                          }}
+                        />
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <input 
+                          type="number" 
+                          required 
+                          min="0" 
+                          className="history-search-input" 
+                          style={{ width: '80px', textAlign: 'center', padding: '0.25rem', color: item.damaged_qty > 0 ? '#f87171' : 'var(--text-muted)' }} 
+                          value={item.damaged_qty} 
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            const updated = [...grnItems];
+                            updated[idx].damaged_qty = val;
+                            setGrnItems(updated);
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Arrival Remarks / Notes</label>
+              <textarea 
+                className="history-search-input" 
+                style={{ width: '100%', height: '60px', padding: '0.5rem', resize: 'none' }} 
+                placeholder="e.g. Received in good condition, 2 boxes wet during shipping..." 
+                value={grnRemarks}
+                onChange={(e) => setGrnRemarks(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem' }}>
+              <button 
+                type="button" 
+                onClick={() => { setShowGRNModal(false); setSelectedPOForGRN(null); }}
+                className="scan-action-btn btn-secondary"
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
+
+              <button 
+                type="submit" 
+                className="scan-action-btn btn-primary"
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                disabled={grnLoading}
+              >
+                {grnLoading ? <Loader className="spin-anim" size={16} /> : (
+                  <>
+                    <span>Post Goods Receipt</span>
+                    <CheckCircle size={14} />
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

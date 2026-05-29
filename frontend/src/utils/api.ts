@@ -222,9 +222,16 @@ export interface Notification {
 // Dashboard Interfaces
 export interface DashboardStats {
   total_products: number;
-  total_inventory: number;
+  low_stock_alerts: number;
+  total_inventory_records: number;
+  total_inventory_quantity: number;
   unread_notifications: number;
   purchase_orders: number;
+  sales_orders: number;
+  total_warehouses: number;
+  total_suppliers: number;
+  total_boms: number;
+  active_production_orders: number;
 }
 
 
@@ -1206,6 +1213,125 @@ export async function fetchWarehouseInventory(warehouseId: number): Promise<Ware
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch warehouse specific inventory');
+  }
+  return res.json();
+}
+
+// ─── ADDITIONS FOR GRN (GOODS RECEIPT NOTES) ───────────────
+
+export interface GRNItemCreate {
+  product_id: number;
+  ordered_qty: number;
+  received_qty: number;
+  damaged_qty?: number;
+}
+
+export interface GRNCreate {
+  purchase_order_id: number;
+  warehouse_id: number;
+  remarks?: string;
+  items: GRNItemCreate[];
+}
+
+export interface GRNItemResponse {
+  id: number;
+  product_id: number;
+  ordered_qty: number;
+  received_qty: number;
+  damaged_qty: number;
+}
+
+export interface GRNResponse {
+  id: number;
+  purchase_order_id: number;
+  warehouse_id: number;
+  remarks?: string;
+  status: string;
+  items: GRNItemResponse[];
+}
+
+export interface StockMovementCreate {
+  product_id: number;
+  warehouse_id: number;
+  quantity: number;
+  reference?: string;
+  remarks?: string;
+}
+
+export interface StockTransferCreate {
+  product_id: number;
+  source_warehouse_id: number;
+  destination_warehouse_id: number;
+  quantity: number;
+  reference?: string;
+  remarks?: string;
+}
+
+export interface StockMovementResponse {
+  id: number;
+  product_id: number;
+  warehouse_id: number;
+  movement_type: 'IN' | 'OUT' | 'TRANSFER';
+  quantity: number;
+  reference?: string;
+  remarks?: string;
+  created_by?: number;
+  created_at: string;
+}
+
+export async function createGRN(data: GRNCreate): Promise<GRNResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/grn/receive`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create Goods Receipt Note');
+  }
+  return res.json();
+}
+
+export async function createStockMovement(data: StockMovementCreate, type: 'in' | 'out'): Promise<StockMovementResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/stock-movements/${type}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to record stock ${type.toUpperCase()}`);
+  }
+  return res.json();
+}
+
+export async function transferStock(data: StockTransferCreate): Promise<StockMovementResponse[]> {
+  const res = await fetchWithAuth(`${API_BASE}/stock-movements/transfer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to transfer stock');
+  }
+  return res.json();
+}
+
+export async function fetchStockMovements(filters?: { product_id?: number; warehouse_id?: number; movement_type?: string }): Promise<StockMovementResponse[]> {
+  let url = `${API_BASE}/stock-movements/`;
+  const params = new URLSearchParams();
+  if (filters?.product_id) params.append('product_id', filters.product_id.toString());
+  if (filters?.warehouse_id) params.append('warehouse_id', filters.warehouse_id.toString());
+  if (filters?.movement_type) params.append('movement_type', filters.movement_type);
+  
+  const queryStr = params.toString();
+  if (queryStr) url += `?${queryStr}`;
+  
+  const res = await fetchWithAuth(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch stock movements');
   }
   return res.json();
 }
