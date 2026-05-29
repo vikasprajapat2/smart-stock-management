@@ -15,11 +15,11 @@ class ProductBase(BaseModel):
 
     category_id: Optional[int] = None
 
-    selling_price: Decimal = Field(..., ge=0)
+    selling_price: Optional[Decimal] = Field(default=Decimal('0.00'), ge=0)
 
-    reorder_level: int = Field(default=0, ge=0)
+    reorder_level: Optional[int] = Field(default=0, ge=0)
 
-    unit: str = Field(default="pcs", min_length=1)
+    unit: Optional[str] = Field(default="pcs")
 
     is_active: bool = True
 

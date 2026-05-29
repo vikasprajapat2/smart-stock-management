@@ -2,21 +2,21 @@ import React, { useState, useEffect } from 'react';
 import {
   ShoppingBag, CheckCircle, AlertTriangle,
   Layers, Database, Landmark, Plus, Search, Loader,
-  Trash2, Check, AlertCircle, Users, Tag, Edit2, Lock, Unlock, X
+  Trash2, Check, AlertCircle, Users, Tag, Edit2, Lock, Unlock, X, Clock
 } from 'lucide-react';
 import {
   fetchDashboardStats, fetchNotifications, markNotificationRead,
-  fetchSuppliers, createSupplier, updateSupplier, deleteSupplier, fetchGSTDetails,
-  fetchPurchaseOrders, createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf,
+  fetchSuppliers, createSupplier, updateSupplier, deleteSupplier, fetchGSTDetails, fetchSupplierHistory,
+  fetchPurchaseOrders, createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, receivePurchaseOrder,
   fetchOrders, createOrder, deleteSalesOrder,
-  fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse,
+  fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, fetchWarehouseInventory,
   fetchProducts,
   fetchUsers, updateUserRole, deactivateUser, activateUser, deleteUser,
   fetchAllCategories, createCategory, updateCategory, deleteCategory
 } from '../utils/api';
 import type {
   Product, Supplier, Warehouse, PurchaseOrderResponse,
-  SalesOrderResponse, Notification, DashboardStats, User, CategoryResponse
+  SalesOrderResponse, Notification, DashboardStats, User, CategoryResponse, WarehouseInventoryItem
 } from '../utils/api';
 
 interface Role {
@@ -274,6 +274,9 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
   const [successMsg, setSuccessMsg] = useState<string>('');
   const [formLoading, setFormLoading] = useState<boolean>(false);
 
+  const [whInventory, setWhInventory] = useState<WarehouseInventoryItem[]>([]);
+  const [whInventoryLoading, setWhInventoryLoading] = useState<boolean>(false);
+
   const loadData = async () => {
     try {
       const [w, p] = await Promise.all([
@@ -295,6 +298,25 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (selectedWhId === null) return;
+    
+    const loadWhInventory = async () => {
+      setWhInventoryLoading(true);
+      try {
+        const data = await fetchWarehouseInventory(selectedWhId);
+        setWhInventory(data.inventory);
+      } catch (err: any) {
+        console.error(err);
+        setErrorMsg('Failed to load warehouse-specific inventory records.');
+      } finally {
+        setWhInventoryLoading(false);
+      }
+    };
+    
+    loadWhInventory();
+  }, [selectedWhId]);
 
   const handleSaveWarehouse = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -468,25 +490,40 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
 
             <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', fontWeight: 700 }}>Stored Inventory Catalog (All Products)</h4>
             
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', position: 'relative' }}>
+              {whInventoryLoading && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(20,20,30,0.6)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+                  <Loader className="spin-anim" size={24} style={{ color: 'var(--accent-cyan)' }} />
+                </div>
+              )}
+              
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>Product Name</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>SKU Code</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Total Stock</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Available Stock</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center' }}>Reserved Stock</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map(p => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                      <td style={{ padding: '0.75rem', color: '#fff', fontWeight: 600 }}>{p.product_name}</td>
-                      <td style={{ padding: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{p.sku}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                        {p.stock_quantity} {p.unit || 'pcs'}
-                      </td>
-                    </tr>
-                  ))}
+                  {products.map(p => {
+                    const invItem = whInventory.find(item => item.product_id === p.id);
+                    const qty = invItem ? invItem.quantity : 0;
+                    const reserved = invItem ? invItem.reserved_quantity : 0;
+                    return (
+                      <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <td style={{ padding: '0.75rem', color: '#fff', fontWeight: 600 }}>{p.product_name}</td>
+                        <td style={{ padding: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{p.sku}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: qty > 0 ? 'var(--accent-neon)' : 'var(--text-muted)' }}>
+                          {qty} {p.unit || 'pcs'}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: reserved > 0 ? '#fbbf24' : 'var(--text-muted)' }}>
+                          {reserved} {p.unit || 'pcs'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -520,6 +557,12 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
   const [successMsg, setSuccessMsg] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // History Modal states
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [supplierHistory, setSupplierHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState<boolean>(false);
+
   const loadSuppliers = async () => {
     try {
       const data = await fetchSuppliers();
@@ -528,6 +571,23 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenHistory = async (s: Supplier) => {
+    setSelectedSupplier(s);
+    setShowHistoryModal(true);
+    setHistoryLoading(true);
+    setErrorMsg('');
+    setSupplierHistory([]);
+    try {
+      const data = await fetchSupplierHistory(s.id);
+      setSupplierHistory(data);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg('Failed to load supplier purchase history.');
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -807,7 +867,7 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                   <th style={{ padding: '1rem', textAlign: 'left' }}>GSTIN Status</th>
                   <th style={{ padding: '1rem', textAlign: 'left' }}>Contact Info</th>
                   <th style={{ padding: '1rem', textAlign: 'left' }}>Office Address</th>
-                  {userRole !== 'staff' && <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>}
+                  <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -839,29 +899,187 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={s.address}>
                       {s.address || 'N/A'}
                     </td>
-                    {userRole !== 'staff' && (
-                      <td style={{ padding: '1rem', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          <button onClick={() => handleEdit(s)} className="btn-icon-only" style={{ background: 'rgba(96, 165, 250, 0.1)', border: 'none', color: '#60a5fa', borderRadius: '6px', padding: '0.4rem' }} title="Edit">
-                            <Edit2 size={16} />
-                          </button>
-                          <button onClick={() => handleDelete(s.id)} className="btn-icon-only" style={{ background: 'rgba(248, 113, 113, 0.1)', border: 'none', color: '#f87171', borderRadius: '6px', padding: '0.4rem' }} title="Delete">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    )}
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <button onClick={() => handleOpenHistory(s)} className="btn-icon-only" style={{ background: 'rgba(167, 139, 250, 0.1)', border: 'none', color: '#a78bfa', borderRadius: '6px', padding: '0.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="View Purchase History">
+                          <Clock size={16} />
+                        </button>
+                        {userRole !== 'staff' && (
+                          <>
+                            <button onClick={() => handleEdit(s)} className="btn-icon-only" style={{ background: 'rgba(96, 165, 250, 0.1)', border: 'none', color: '#60a5fa', borderRadius: '6px', padding: '0.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Edit">
+                              <Edit2 size={16} />
+                            </button>
+                            <button onClick={() => handleDelete(s.id)} className="btn-icon-only" style={{ background: 'rgba(248, 113, 113, 0.1)', border: 'none', color: '#f87171', borderRadius: '6px', padding: '0.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="Delete">
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {filteredSuppliers.length === 0 && (
                   <tr>
-                    <td colSpan={userRole !== 'staff' ? 5 : 4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                       No suppliers found.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Supplier Purchase Order History Modal */}
+      {showHistoryModal && selectedSupplier && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(10, 10, 15, 0.8)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1.5rem'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            background: 'rgba(20, 20, 30, 0.95)',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
+            borderRadius: '16px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                  <Clock size={18} style={{ color: 'var(--accent-purple)' }} />
+                  Purchase History
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', margin: 0 }}>Business Partner: {selectedSupplier.supplier_name}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowHistoryModal(false);
+                  setSelectedSupplier(null);
+                  setSupplierHistory([]);
+                }}
+                className="btn-icon-only"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{
+              padding: '1.5rem',
+              overflowY: 'auto',
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              {historyLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 0', gap: '1rem' }}>
+                  <Loader className="spin-anim" size={28} style={{ color: 'var(--accent-purple)' }} />
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Retrieving supplier procurement records...</span>
+                </div>
+              ) : supplierHistory.length === 0 ? (
+                <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Layers size={40} style={{ margin: '0 auto 0.75rem', opacity: 0.2 }} />
+                  <p style={{ fontSize: '0.85rem', margin: 0 }}>No purchase orders have been registered with this supplier yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {supplierHistory.map((po: any) => (
+                    <div key={po.id} style={{
+                      padding: '1rem',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid rgba(255, 255, 255, 0.04)',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-purple)', fontFamily: 'var(--font-mono)' }}>{po.po_number}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{new Date(po.order_date).toLocaleDateString()}</span>
+                        </div>
+                        <span style={{
+                          fontSize: '0.65rem',
+                          background: po.status === 'COMPLETED' || po.status === 'RECEIVED' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                          color: po.status === 'COMPLETED' || po.status === 'RECEIVED' ? 'var(--accent-neon)' : '#fbbf24',
+                          border: po.status === 'COMPLETED' || po.status === 'RECEIVED' ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '4px',
+                          fontWeight: 700
+                        }}>
+                          {po.status}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        {po.items.map((item: any) => (
+                          <span key={item.id} style={{
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '4px',
+                            fontSize: '0.7rem',
+                            color: 'var(--text-secondary)'
+                          }}>
+                            {item.product_name || 'Product'} (x{item.quantity}) — ₹{Number(item.unit_price).toFixed(2)}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.75rem',
+                        borderTop: '1px dashed rgba(255, 255, 255, 0.05)',
+                        paddingTop: '0.5rem',
+                        marginTop: '0.25rem'
+                      }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Wh Destination: <strong style={{ color: '#fff' }}>{po.warehouse_name || 'N/A'}</strong></span>
+                        <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.85rem' }}>Total: ₹{Number(po.total_amount).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -996,11 +1214,11 @@ export const PurchaseOrdersView: React.FC = () => {
     }
     setLoading(true);
     try {
-      await updatePurchaseOrder(id, { status: 'COMPLETED' });
+      await receivePurchaseOrder(id);
       setSuccessMsg('Stock registered and incremented in warehouse database successfully!');
       await loadData();
     } catch (e: any) {
-      setErrorMsg(e.message || 'Failed to complete PO.');
+      setErrorMsg(e.message || 'Failed to receive purchase order stock.');
       setLoading(false);
     }
   };
