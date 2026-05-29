@@ -21,10 +21,6 @@ from app.models.purchase_request import PurchaseRequest
 from app.models.bom_version import BOMVersion
 from app.models.supplier import Supplier
 from app.models.purchase_order import PurchaseOrder, PurchaseOrderItem
-from app.models.grn import GRN
-from app.models.grn_item import GRNItem
-from app.models.stock_movement import StockMovement
-from app.models.inventory_log import InventoryLog
 from app.auth.dependencies import get_current_user
 
 # Create TestClient
@@ -39,15 +35,13 @@ def override_get_current_user():
 
 app.dependency_overrides[get_current_user] = override_get_current_user
 
-def clean_all_test_data(db):
+def setup_db(db):
+    print("Setting up DB for API tests...")
+    Base.metadata.create_all(bind=engine)
+    
+    # Clean up any existing test data
     db.query(MaterialReservation).delete()
     db.query(PurchaseRequest).delete()
-    db.query(GRNItem).delete()
-    db.query(GRN).delete()
-    db.query(PurchaseOrderItem).delete()
-    db.query(PurchaseOrder).delete()
-    db.query(StockMovement).delete()
-    db.query(InventoryLog).delete()
     db.query(ProductionOrder).delete()
     db.query(BOMItem).delete()
     db.query(BOMVersion).delete()
@@ -59,11 +53,6 @@ def clean_all_test_data(db):
     db.query(Supplier).filter(Supplier.supplier_name == "API-TEST Supplier").delete()
     db.query(User).filter(User.email == "apiadmin@keyafusion.com").delete()
     db.commit()
-
-def setup_db(db):
-    print("Setting up DB for API tests...")
-    Base.metadata.create_all(bind=engine)
-    clean_all_test_data(db)
 
     # Create admin user
     user = User(
@@ -364,8 +353,6 @@ def run_api_crud_tests():
         # First, clean up production order & related objects
         db.query(MaterialReservation).delete()
         db.query(PurchaseRequest).delete()
-        db.query(GRNItem).delete()
-        db.query(GRN).delete()
         db.query(PurchaseOrderItem).delete()
         db.query(PurchaseOrder).delete()
         db.query(ProductionOrder).delete()
@@ -377,7 +364,14 @@ def run_api_crud_tests():
         assert r.status_code == 204
         print("  [PASSED] DELETE /boms/{id} works")
 
-        clean_all_test_data(db)
+        # Clean up database tables
+        db.query(Inventory).delete()
+        db.query(Product).filter(Product.sku.like("API-TEST-%")).delete()
+        db.query(Warehouse).filter(Warehouse.warehouse_name == "API-TEST Warehouse").delete()
+        db.query(Category).filter(Category.category_name == "API-TEST Category").delete()
+        db.query(Supplier).filter(Supplier.supplier_name == "API-TEST Supplier").delete()
+        db.query(User).filter(User.email == "apiadmin@keyafusion.com").delete()
+        db.commit()
         print("  [PASSED] Database cleaned up successfully.")
         
         print("\n--- ALL API CRUD TESTS PASSED SUCCESSFULLY! ---")
