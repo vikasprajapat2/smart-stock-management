@@ -324,7 +324,5 @@ app.include_router(bom_router)
 app.include_router(production_order_router)
 
 app.include_router(purchase_request_router)
-
 app.include_router(grn_router)
-
 app.include_router(stock_movements_router)
