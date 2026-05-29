@@ -984,7 +984,6 @@ function App() {
           background: #080a14;
           color: var(--text-primary);
           font-family: 'Outfit', sans-serif;
-          overflow: hidden;
         }
 
         /* ─── SIDEBAR STYLES ───────────────────────────────── */
@@ -1047,18 +1046,17 @@ function App() {
         .sidebar-nav-list {
           display: flex;
           flex-direction: column;
-          gap: 0.35rem;
+          gap: 0.15rem;
           flex: 1;
-          overflow-y: auto;
         }
 
         .nav-section-title {
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.08em;
           color: var(--text-muted);
-          margin: 1rem 0 0.25rem 0.5rem;
+          margin: 0.5rem 0 0.15rem 0.5rem;
           height: 12px;
           white-space: nowrap;
           overflow: hidden;
@@ -1067,8 +1065,8 @@ function App() {
         .sidebar-nav-btn {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-          padding: 0.7rem 0.85rem;
+          gap: 0.6rem;
+          padding: 0.45rem 0.75rem;
           background: transparent;
           border: 1px solid transparent;
           border-radius: 8px;
@@ -1125,8 +1123,6 @@ function App() {
           flex: 1;
           display: flex;
           flex-direction: column;
-          height: 100vh;
-          overflow: hidden;
         }
 
         .erp-topbar {
@@ -1148,6 +1144,7 @@ function App() {
           border-radius: 20px;
           font-size: 0.75rem;
           font-weight: 700;
+          transition: var(--transition-smooth);
         }
 
         .db-indicator-pill.connected {
@@ -1199,7 +1196,6 @@ function App() {
           padding: 2rem;
           display: flex;
           flex-direction: column;
-          overflow-y: auto;
           background-image: radial-gradient(ellipse at 40% 0%, rgba(6, 182, 212, 0.04) 0%, transparent 60%),
                             radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.03) 0%, transparent 60%);
         }
