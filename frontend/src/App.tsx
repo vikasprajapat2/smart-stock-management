@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Camera, Image, Clock, QrCode, ShieldCheck, ShoppingBag,
+  Camera, Image, Clock, ShieldCheck, ShoppingBag,
   Database, LayoutDashboard, Users, Layers,
   CreditCard, Bell, ChevronRight
 } from 'lucide-react';
@@ -9,16 +9,17 @@ import { ScannerUpload } from './components/ScannerUpload';
 import { ResultPanel } from './components/ResultPanel';
 import { HistoryPanel, type HistoryItem } from './components/HistoryPanel';
 import { InventoryManager } from './components/InventoryManager';
+import { BOMManager } from './components/BOMManager';
 import {
   DashboardView, WarehouseView, SuppliersView,
   PurchaseOrdersView, OrdersView, UsersView, CategoriesView
 } from './components/ERPViews';
 import { parseScanResult, type ParsedScanResult } from './utils/parser';
-import { api, checkBackendConnection, fetchWarehouses, submitProductScan, fetchNotifications, markNotificationRead } from './utils/api';
+import { checkBackendConnection, fetchWarehouses, submitProductScan, fetchNotifications, markNotificationRead } from './utils/api';
 import LoginModal from './components/LoginModal';
 import type { Warehouse as BackendWarehouse, Notification as BackendNotification } from './utils/api';
 
-type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history';
+type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history' | 'bom';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -449,6 +450,14 @@ function App() {
                 <Layers size={18} />
                 {!sidebarCollapsed && <span>Categories Setup</span>}
               </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'bom' ? 'active' : ''}`}
+                onClick={() => handleTabChange('bom')}
+              >
+                <Layers size={18} />
+                {!sidebarCollapsed && <span>BOM & Assembly</span>}
+              </button>
             </>
           )}
 
@@ -511,7 +520,7 @@ function App() {
             <span style={{ fontSize: '1.2rem' }}>📦</span>
             <div style={{ textTransform: 'capitalize' }}>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>
-                {activeTab === 'webcam' ? 'Live Camera Decoder' : activeTab === 'inventory' ? 'Products & Stock Management' : activeTab === 'procurement' ? 'Procurement purchase invoices' : activeTab === 'dashboard' ? 'ERP Dashboard Summary' : activeTab + ' hub'}
+                {activeTab === 'webcam' ? 'Live Camera Decoder' : activeTab === 'inventory' ? 'Products & Stock Management' : activeTab === 'bom' ? 'BOM & Production Runs' : activeTab === 'procurement' ? 'Procurement purchase invoices' : activeTab === 'dashboard' ? 'ERP Dashboard Summary' : activeTab + ' hub'}
               </h3>
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Enterprise stock logistical portal</p>
             </div>
@@ -637,6 +646,12 @@ function App() {
           {activeTab === 'inventory' && isBackendConnected && (
             <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
               <InventoryManager />
+            </div>
+          )}
+
+          {activeTab === 'bom' && isBackendConnected && (
+            <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', overflowY: 'auto' }}>
+              <BOMManager />
             </div>
           )}
 

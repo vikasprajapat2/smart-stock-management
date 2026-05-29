@@ -622,5 +622,274 @@ export async function deleteCategory(id: number): Promise<any> {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to delete category');
   }
+  if (res.status === 204) return null;
+  return res.json().catch(() => null);
+}
+
+// ─── BILL OF MATERIALS (BOM) MANAGEMENT ──────────────────────
+
+export interface BOMItemCreateInput {
+  material_product_id: number;
+  quantity_required: number;
+  wastage_percent?: number;
+  unit?: string;
+  remarks?: string;
+}
+
+export interface BOMItemResponse {
+  id: number;
+  bom_id: number;
+  material_product_id: number;
+  quantity_required: number;
+  wastage_percent: number;
+  unit?: string;
+  remarks?: string;
+  material_product?: Product;
+}
+
+export interface BOMCreateInput {
+  bom_number: string;
+  product_id: number;
+  version?: string;
+  description?: string;
+  labor_cost?: number;
+  overhead_cost?: number;
+}
+
+export interface BOMUpdateInput {
+  version?: string;
+  description?: string;
+  labor_cost?: number;
+  overhead_cost?: number;
+  status?: string;
+  items?: BOMItemCreateInput[];
+}
+
+export interface BOMResponse {
+  id: number;
+  bom_number: string;
+  product_id: number;
+  version: string;
+  description?: string;
+  raw_material_cost: number;
+  labor_cost: number;
+  overhead_cost: number;
+  total_cost: number;
+  status: 'DRAFT' | 'APPROVED';
+  created_at: string;
+  updated_at: string;
+  product?: Product;
+  items: BOMItemResponse[];
+}
+
+export interface BOMTreeNode {
+  material_product_id: number;
+  product_name: string;
+  sku?: string;
+  quantity_required: number;
+  unit?: string;
+  wastage_percent: number;
+  total_cost: number;
+  has_sub_bom: boolean;
+  sub_bom_id?: number;
+  children: BOMTreeNode[];
+}
+
+// ─── PRODUCTION ORDERS MANAGEMENT ───────────────────────────
+
+export interface ProductionOrderCreateInput {
+  production_order_number: string;
+  product_id: number;
+  bom_id: number;
+  quantity_to_produce: number;
+}
+
+export interface MaterialReservationResponse {
+  id: number;
+  production_order_id: number;
+  product_id: number;
+  quantity_reserved: number;
+  status: string;
+  created_at: string;
+  product?: Product;
+}
+
+export interface ProductionOrderResponse {
+  id: number;
+  production_order_number: string;
+  product_id: number;
+  bom_id: number;
+  quantity_to_produce: number;
+  status: 'DRAFT' | 'APPROVED' | 'IN_PRODUCTION' | 'COMPLETED';
+  created_at: string;
+  updated_at: string;
+  product?: Product;
+  bom?: BOMResponse;
+  reservations: MaterialReservationResponse[];
+}
+
+export interface ShortageItem {
+  product_id: number;
+  product_name: string;
+  sku?: string;
+  required_qty: number;
+  available_qty: number;
+  shortage_qty: number;
+}
+
+export interface StockAvailabilityResponse {
+  production_order_id: number;
+  can_produce: boolean;
+  shortages: ShortageItem[];
+}
+
+export async function fetchAllBOMs(): Promise<BOMResponse[]> {
+  const res = await fetchWithAuth(`${API_BASE}/boms/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch BOMs');
+  }
   return res.json();
 }
+
+export async function fetchBOMById(id: number): Promise<BOMResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/boms/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch BOM details');
+  }
+  return res.json();
+}
+
+export async function createBOM(bomData: BOMCreateInput & { items: BOMItemCreateInput[] }): Promise<BOMResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/boms/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bomData)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create BOM');
+  }
+  return res.json();
+}
+
+export async function updateBOM(id: number, bomData: BOMUpdateInput): Promise<BOMResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/boms/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bomData)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update BOM');
+  }
+  return res.json();
+}
+
+export async function deleteBOM(id: number): Promise<void> {
+  const res = await fetchWithAuth(`${API_BASE}/boms/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete BOM');
+  }
+  return;
+}
+
+export async function approveBOM(id: number): Promise<BOMResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/boms/${id}/approve`, {
+    method: 'POST'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to approve BOM');
+  }
+  return res.json();
+}
+
+export async function fetchBOMTree(id: number): Promise<BOMTreeNode> {
+  const res = await fetchWithAuth(`${API_BASE}/boms/${id}/tree`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch BOM tree');
+  }
+  return res.json();
+}
+
+// ─── PRODUCTION ORDERS API ───────────────────────────────────
+
+export async function fetchAllProductionOrders(): Promise<ProductionOrderResponse[]> {
+  const res = await fetchWithAuth(`${API_BASE}/production-orders/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch production orders');
+  }
+  return res.json();
+}
+
+export async function fetchProductionOrderById(id: number): Promise<ProductionOrderResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/production-orders/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch production order details');
+  }
+  return res.json();
+}
+
+export async function createProductionOrder(poData: ProductionOrderCreateInput): Promise<ProductionOrderResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/production-orders/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(poData)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create production order');
+  }
+  return res.json();
+}
+
+export async function checkStockAvailability(id: number): Promise<StockAvailabilityResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/production-orders/${id}/check-availability`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to check stock availability');
+  }
+  return res.json();
+}
+
+export async function approveProductionOrder(id: number): Promise<ProductionOrderResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/production-orders/${id}/approve`, {
+    method: 'POST'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to approve production order');
+  }
+  return res.json();
+}
+
+export async function startProductionOrder(id: number): Promise<ProductionOrderResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/production-orders/${id}/start`, {
+    method: 'POST'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to start production order');
+  }
+  return res.json();
+}
+
+export async function completeProductionOrder(id: number): Promise<ProductionOrderResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/production-orders/${id}/complete`, {
+    method: 'POST'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to complete production order');
+  }
+  return res.json();
+}
+
