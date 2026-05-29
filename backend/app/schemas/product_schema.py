@@ -7,7 +7,7 @@ from app.schemas.category_schema import CategoryResponse
 
 class ProductBase(BaseModel):
 
-    product_name: str = Field(..., min_length=2, max_length=255)
+    product_name: str = Field(..., min_length=1, max_length=255)
 
     sku: str = Field(..., min_length=3, max_length=100)
 
@@ -19,9 +19,10 @@ class ProductBase(BaseModel):
 
     reorder_level: Optional[int] = Field(default=0, ge=0)
 
-    unit: str = Field(default="pcs", min_length=1)
+    unit: Optional[str] = Field(default="pcs")
 
     is_active: bool = True
+
 
 
 class ProductCreate(ProductBase):
@@ -30,7 +31,7 @@ class ProductCreate(ProductBase):
 
 class ProductUpdate(BaseModel):
 
-    product_name: Optional[str] = Field(None, min_length=2)
+    product_name: Optional[str] = Field(None, min_length=1)
 
     sku: Optional[str] = Field(None, min_length=3)
 
