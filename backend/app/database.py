@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 import logging
 
-load_dotenv()
+load_dotenv(override=True)
 
 # Setup logs
 logger = logging.getLogger("uvicorn.error")

@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom';
 import { 
   fetchProducts, createProduct, updateProduct, deleteProduct, fetchCategories, 
   checkBackendConnection, fetchWarehouses, submitProductScan,
-  downloadProductTemplate, exportProductsExcel, importProductsExcel
+  downloadProductTemplate, exportProductsExcel, importProductsExcel, API_BASE
 } from '../utils/api';
 import type { Product, Category, Warehouse, ProductCreateInput } from '../utils/api';
 
@@ -1095,7 +1095,7 @@ export const InventoryManager: React.FC = () => {
                     />
                     <button
                       onClick={() => {
-                        window.open(`http://localhost:8000/api/products/${qrPopupProduct.id}/print-barcode?quantity=${printQuantity}`, '_blank');
+                        window.open(`${API_BASE}/products/${qrPopupProduct.id}/print-barcode?quantity=${printQuantity}`, '_blank');
                       }}
                       style={{ 
                         flex: 1, padding: '0.55rem', background: 'var(--accent-neon)', color: '#fff', 
