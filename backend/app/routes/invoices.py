@@ -56,19 +56,19 @@ def get_invoice_pdf(invoice_id: int, db: Session = Depends(get_db)):
         
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt=f"Invoice: {invoice.invoice_number}", ln=True, align="C")
+    pdf.set_font("Helvetica", 'B', 16)
+    pdf.cell(200, 10, text=f"Invoice: {invoice.invoice_number}", new_x="LMARGIN", new_y="NEXT", align="C")
     
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt=f"Date: {invoice.invoice_date}", ln=True)
-    pdf.cell(200, 10, txt=f"Customer ID: {invoice.customer_id}", ln=True)
-    pdf.cell(200, 10, txt=f"Sales Order ID: {invoice.sales_order_id}", ln=True)
+    pdf.set_font("Helvetica", size=12)
+    pdf.cell(200, 10, text=f"Date: {invoice.invoice_date}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 10, text=f"Customer ID: {invoice.customer_id}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 10, text=f"Sales Order ID: {invoice.sales_order_id}", new_x="LMARGIN", new_y="NEXT")
     
-    pdf.cell(200, 10, txt=f"Subtotal: {invoice.subtotal}", ln=True)
-    pdf.cell(200, 10, txt=f"Tax: {invoice.tax}", ln=True)
-    pdf.cell(200, 10, txt=f"Grand Total: {invoice.grand_total}", ln=True)
+    pdf.cell(200, 10, text=f"Subtotal: {invoice.subtotal}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 10, text=f"Tax: {invoice.tax}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 10, text=f"Grand Total: {invoice.grand_total}", new_x="LMARGIN", new_y="NEXT")
     
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    pdf_bytes = bytes(pdf.output())
     return StreamingResponse(
         io.BytesIO(pdf_bytes), 
         media_type="application/pdf", 
