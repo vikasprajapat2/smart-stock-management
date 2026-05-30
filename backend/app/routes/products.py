@@ -1,0 +1,441 @@
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    UploadFile,
+    File
+)
+from sqlalchemy.orm import Session
+from sqlalchemy import or_, func
+from typing import List, Optional
+from app.utils.role_checker import (
+    require_admin,
+    require_staff
+)
+import pandas as pd
+from app.database import get_db
+from app.models.product import Product
+from app.models.category import Category
+from app.models.inventory import Inventory
+from app.models.warehouse import Warehouse
+from app.models.inventory_log import InventoryLog
+from app.models.stock_movement import StockMovement
+from app.models.purchase_order import PurchaseOrderItem
+from app.models.purchase_request import PurchaseRequest
+from app.models.production_order import ProductionOrder
+from app.models.material_reservation import MaterialReservation
+from app.models.grn_item import GRNItem
+from app.models.bom_item import BOMItem
+from app.models.order_item import SalesOrderItem
+from app.schemas.product_schema import (
+    ProductCreate,
+    ProductUpdate,
+    ProductResponse,
+    ProductScanRequest,
+    ProductScanResponse
+)
+from app.utils.product_helpers import generate_sku, generate_barcode
+from app.utils.inventory_helpers import log_inventory_change, check_and_trigger_low_stock_alert
+from app.utils.role_checker import require_admin, require_staff
+from io import BytesIO
+from fastapi.responses import StreamingResponse
+
+router = APIRouter(
+    prefix="/products",
+    tags=["Products"]
+)
+
+def get_product_stock(db: Session, product_id: int) -> int:
+    qty = db.query(func.sum(Inventory.quantity)).filter(Inventory.product_id == product_id).scalar()
+    return qty if qty is not None else 0
+
+@router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
+def create_product(
+    product_in: ProductCreate, 
+    db: Session = Depends(get_db),
+    current_user = Depends(require_staff)
+):
+    # Validate category if provided
+    category_name = None
+    if product_in.category_id:
+        category = db.query(Category).filter(Category.id == product_in.category_id).first()
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category with id {product_in.category_id} does not exist."
+            )
+        category_name = category.category_name
+
+    # Handle SKU generation / validation
+    sku = product_in.sku
+    if not sku:
+        # Generate SKU
+        for _ in range(5):  # Retry up to 5 times if collisions occur
+            temp_sku = generate_sku(product_in.product_name, category_name)
+            existing = db.query(Product).filter(Product.sku == temp_sku).first()
+            if not existing:
+                sku = temp_sku
+                break
+        if not sku:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate a unique SKU."
+            )
+    else:
+        # Validate uniqueness of provided SKU
+        existing = db.query(Product).filter(Product.sku == sku).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Product with SKU '{sku}' already exists."
+            )
+
+    # Handle Barcode generation / validation
+    barcode = product_in.barcode
+    if not barcode:
+        for _ in range(10):  # Retry to avoid collision
+            temp_barcode = generate_barcode()
+            existing = db.query(Product).filter(Product.barcode == temp_barcode).first()
+            if not existing:
+                barcode = temp_barcode
+                break
+        if not barcode:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to generate a unique 10-digit barcode."
+            )
+    else:
+        # Validate uniqueness of provided barcode if passed
+        existing = db.query(Product).filter(Product.barcode == barcode).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Product with barcode '{barcode}' already exists."
+            )
+
+    product = Product(
+        product_name=product_in.product_name,
+        sku=sku,
+        barcode=barcode,
+        category_id=product_in.category_id,
+        selling_price=product_in.selling_price,
+        reorder_level=product_in.reorder_level,
+        unit=product_in.unit,
+        is_active=product_in.is_active if product_in.is_active is not None else True
+    )
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    
+    # Set stock_quantity (0 for a newly created product)
+    product.stock_quantity = 0
+    return product
+
+@router.get("/", response_model=List[ProductResponse])
+def get_products(
+    search: Optional[str] = None,
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Product)
+    
+    if category_id is not None:
+        query = query.filter(Product.category_id == category_id)
+        
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            or_(
+                Product.product_name.ilike(search_filter),
+                Product.sku.ilike(search_filter),
+                Product.barcode.ilike(search_filter)
+            )
+        )
+        
+    products = query.all()
+    for product in products:
+        product.stock_quantity = get_product_stock(db, product.id)
+        
+    return products
+
+# Excel routes (template, export, import) have been moved to product_excel.py
+
+@router.get("/{id}", response_model=ProductResponse)
+def get_product(id: int, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with id {id} not found."
+        )
+    product.stock_quantity = get_product_stock(db, product.id)
+    return product
+
+@router.put("/{id}", response_model=ProductResponse)
+def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with id {id} not found."
+        )
+
+    # Validate category if being updated
+    if product_in.category_id is not None:
+        category = db.query(Category).filter(Category.id == product_in.category_id).first()
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Category with id {product_in.category_id} does not exist."
+            )
+
+    # Validate SKU uniqueness if being updated
+    if product_in.sku is not None and product_in.sku != product.sku:
+        existing = db.query(Product).filter(Product.sku == product_in.sku).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Product with SKU '{product_in.sku}' already exists."
+            )
+
+    # Validate barcode uniqueness if being updated
+    if product_in.barcode is not None and product_in.barcode != product.barcode:
+        existing = db.query(Product).filter(Product.barcode == product_in.barcode).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Product with barcode '{product_in.barcode}' already exists."
+            )
+
+    # Update fields
+    update_data = product_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(product, key, value)
+
+    db.commit()    
+    db.refresh(product)
+    product.stock_quantity = get_product_stock(db, product.id)
+    return product
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_product(
+    id: int, 
+    force: bool = False,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_staff)
+):
+    product = db.query(Product).filter(Product.id == id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product with id {id} not found."
+        )
+    
+    if force:
+        # Force delete: cascade-remove all referencing records
+        db.query(BOMItem).filter(BOMItem.material_product_id == id).delete(synchronize_session=False)
+        db.query(GRNItem).filter(GRNItem.product_id == id).delete(synchronize_session=False)
+        db.query(SalesOrderItem).filter(SalesOrderItem.product_id == id).delete(synchronize_session=False)
+        db.query(PurchaseOrderItem).filter(PurchaseOrderItem.product_id == id).delete(synchronize_session=False)
+        db.query(StockMovement).filter(StockMovement.product_id == id).delete(synchronize_session=False)
+        db.query(InventoryLog).filter(InventoryLog.product_id == id).delete(synchronize_session=False)
+
+        # Delete production orders and their related reservations/purchase requests
+        prod_orders = db.query(ProductionOrder).filter(ProductionOrder.product_id == id).all()
+        for po in prod_orders:
+            db.query(MaterialReservation).filter(MaterialReservation.production_order_id == po.id).delete(synchronize_session=False)
+            db.query(PurchaseRequest).filter(PurchaseRequest.production_order_id == po.id).delete(synchronize_session=False)
+            db.delete(po)
+
+        # Delete remaining purchase requests and material reservations linked directly to product
+        db.query(PurchaseRequest).filter(PurchaseRequest.product_id == id).delete(synchronize_session=False)
+        db.query(MaterialReservation).filter(MaterialReservation.product_id == id).delete(synchronize_session=False)
+
+        db.query(Inventory).filter(Inventory.product_id == id).delete(synchronize_session=False)
+        db.delete(product)
+        db.commit()
+        return None
+
+    # --- Standard (non-force) deletion with safety checks ---
+
+    # 1. Check if there is active stock in warehouses
+    active_inventory = db.query(Inventory).filter(
+        Inventory.product_id == id,
+        (Inventory.quantity > 0) | (Inventory.quantity_reserved > 0)
+    ).first()
+    if active_inventory:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with active stock in warehouse."
+        )
+
+    # 2. Check for historical transaction references to prevent database FK violations
+    if db.query(InventoryLog).filter(InventoryLog.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated inventory logs."
+        )
+        
+    if db.query(StockMovement).filter(StockMovement.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated stock movements."
+        )
+
+    if db.query(PurchaseOrderItem).filter(PurchaseOrderItem.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated purchase orders."
+        )
+
+    if db.query(PurchaseRequest).filter(PurchaseRequest.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated purchase requests."
+        )
+
+    if db.query(ProductionOrder).filter(ProductionOrder.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated production orders."
+        )
+
+    if db.query(MaterialReservation).filter(MaterialReservation.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated material reservations."
+        )
+
+    if db.query(GRNItem).filter(GRNItem.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated Goods Receipt Notes (GRN)."
+        )
+
+    if db.query(BOMItem).filter(BOMItem.material_product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product because it is used as a raw material in a Bill of Materials (BOM)."
+        )
+
+    if db.query(SalesOrderItem).filter(SalesOrderItem.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated sales order items."
+        )
+    
+    # Clean up associated empty inventory entries first
+    db.query(Inventory).filter(Inventory.product_id == id).delete(synchronize_session=False)
+    db.delete(product)
+    db.commit()
+    return None
+
+
+@router.post("/scan", response_model=ProductScanResponse)
+def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_db)):
+    try:
+        # 1. Validate action value (must be IN or OUT)
+        action = scan_in.action.upper().strip()
+        if action not in ["IN", "OUT"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Action must be either 'IN' or 'OUT'."
+            )
+        
+        # 2. Check if the product exists with the given barcode
+        barcode = scan_in.barcode.strip()
+        product = db.query(Product).filter(Product.barcode == barcode).first()
+        if not product:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Product with barcode '{barcode}' not found."
+            )
+        
+        # 3. Check if the warehouse exists
+        warehouse = db.query(Warehouse).filter(Warehouse.id == scan_in.warehouse_id).first()
+        if not warehouse:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Warehouse with id {scan_in.warehouse_id} not found."
+            )
+            
+        # 4. Fetch or create inventory record for this product and warehouse
+        inventory = db.query(Inventory).filter(
+            Inventory.product_id == product.id,
+            Inventory.warehouse_id == warehouse.id
+        ).first()
+        
+        if not inventory:
+            inventory = Inventory(
+                product_id=product.id,
+                warehouse_id=warehouse.id,
+                quantity=0,
+                quantity_reserved=0
+            )
+            db.add(inventory)
+            db.flush()
+            
+        # 5. Apply IN or OUT adjustment
+        qty_adj = scan_in.quantity if scan_in.quantity is not None else 1
+        if qty_adj <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Quantity to scan must be a positive integer."
+            )
+            
+        old_qty = inventory.quantity
+
+        if action == "IN":
+            inventory.quantity += qty_adj
+            new_qty = inventory.quantity
+            msg = f"Successfully scanned IN: {qty_adj} unit(s) of {product.product_name} added to warehouse {warehouse.warehouse_name}."
+        else:  # OUT
+            if inventory.quantity < qty_adj:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Insufficient stock in warehouse '{warehouse.warehouse_name}'. Available: {inventory.quantity}, trying to scan OUT: {qty_adj}."
+                )
+            inventory.quantity -= qty_adj
+            new_qty = inventory.quantity
+            msg = f"Successfully scanned OUT: {qty_adj} unit(s) of {product.product_name} removed from warehouse {warehouse.warehouse_name}."
+            
+        # Log inventory change
+        log_inventory_change(
+            db=db,
+            product_id=product.id,
+            old_qty=old_qty,
+            new_qty=new_qty,
+            action=f"SCAN_{action}"
+        )
+
+        # Low stock check (warehouse-based & deduplicated)
+        check_and_trigger_low_stock_alert(
+            db=db,
+            product_id=product.id,
+            warehouse_id=warehouse.id,
+            quantity=new_qty
+        )
+
+        db.commit()
+        db.refresh(inventory)
+        
+        return {
+            "product_name": product.product_name,
+            "sku": product.sku,
+            "barcode": product.barcode,
+            "warehouse_id": warehouse.id,
+            "quantity": inventory.quantity,
+            "action": action,
+            "message": msg
+        }
+    except HTTPException as he:
+        db.rollback()
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+

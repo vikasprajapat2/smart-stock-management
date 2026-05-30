@@ -1,3 +1,9 @@
 venv/
-__pycache__/
 .env
+__pycache__/
+*.pyc
+.venv/
+test.db
+mise.toml
+node_modules/
+frontend_old/node_modules/

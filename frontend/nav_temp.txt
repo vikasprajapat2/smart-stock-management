@@ -1,0 +1,210 @@
+        <nav className="sidebar-nav-list">
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'CORE DASHBOARD'}</div>
+
+          <button
+            className={`sidebar-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => handleTabChange('dashboard')}
+          >
+            <LayoutDashboard size={18} />
+            {!sidebarCollapsed && <span>ERP Summary</span>}
+          </button>
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'MASTER DATA'}</div>
+
+          {isBackendConnected && (
+            <>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'customers' ? 'active' : ''}`}
+                onClick={() => handleTabChange('customers')}
+              >
+                <Users size={18} />
+                {!sidebarCollapsed && <span>Customers</span>}
+              </button>
+              
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'suppliers' ? 'active' : ''}`}
+                onClick={() => handleTabChange('suppliers')}
+              >
+                <Users size={18} />
+                {!sidebarCollapsed && <span>Suppliers</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'warehouse' ? 'active' : ''}`}
+                onClick={() => handleTabChange('warehouse')}
+              >
+                <Database size={18} />
+                {!sidebarCollapsed && <span>Warehouses</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'categories' ? 'active' : ''}`}
+                onClick={() => handleTabChange('categories')}
+              >
+                <Layers size={18} />
+                {!sidebarCollapsed && <span>Categories</span>}
+              </button>
+            </>
+          )}
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'INVENTORY LOGISTICS'}</div>
+
+          {isBackendConnected && (
+            <>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'inventory' ? 'active' : ''}`}
+                onClick={() => handleTabChange('inventory')}
+              >
+                <ShoppingBag size={18} />
+                {!sidebarCollapsed && <span>Products Catalog</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'inventoryRecords' ? 'active' : ''}`}
+                onClick={() => handleTabChange('inventoryRecords')}
+              >
+                <Database size={18} />
+                {!sidebarCollapsed && <span>Inventory Status</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'inventoryLogs' ? 'active' : ''}`}
+                onClick={() => handleTabChange('inventoryLogs')}
+              >
+                <Clock size={18} style={{ color: 'var(--accent-purple)' }} />
+                {!sidebarCollapsed && <span>Movement Logs</span>}
+              </button>
+            </>
+          )}
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'PROCUREMENT (PO)'}</div>
+
+          {isBackendConnected && (
+            <>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'purchaseRequests' ? 'active' : ''}`}
+                onClick={() => handleTabChange('purchaseRequests')}
+              >
+                <ClipboardList size={18} />
+                {!sidebarCollapsed && <span>Purchase Requests</span>}
+              </button>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'procurement' ? 'active' : ''}`}
+                onClick={() => handleTabChange('procurement')}
+              >
+                <Layers size={18} />
+                {!sidebarCollapsed && <span>Purchase Orders</span>}
+              </button>
+            </>
+          )}
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'MANUFACTURING (MRP)'}</div>
+
+          {isBackendConnected && (
+            <>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'boms' ? 'active' : ''}`}
+                onClick={() => handleTabChange('boms')}
+              >
+                <Cpu size={18} />
+                {!sidebarCollapsed && <span>BOM Recipes</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'bom' ? 'active' : ''}`}
+                onClick={() => handleTabChange('bom')}
+              >
+                <Layers size={18} />
+                {!sidebarCollapsed && <span>Assembly Plans</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'productionOrders' ? 'active' : ''}`}
+                onClick={() => handleTabChange('productionOrders')}
+              >
+                <Factory size={18} />
+                {!sidebarCollapsed && <span>Work Orders</span>}
+              </button>
+            </>
+          )}
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'SALES & DISPATCH'}</div>
+
+          {isBackendConnected && (
+            <>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'sales' ? 'active' : ''}`}
+                onClick={() => handleTabChange('sales')}
+              >
+                <ShoppingCart size={18} />
+                {!sidebarCollapsed && <span>Sales Orders</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'dispatch' ? 'active' : ''}`}
+                onClick={() => handleTabChange('dispatch')}
+              >
+                <Truck size={18} />
+                {!sidebarCollapsed && <span>Dispatch & Shipping</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'invoices' ? 'active' : ''}`}
+                onClick={() => handleTabChange('invoices')}
+              >
+                <FileText size={18} />
+                {!sidebarCollapsed && <span>Invoices</span>}
+              </button>
+            </>
+          )}
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'TOOLS & ADMIN'}</div>
+
+          <button
+            className={`sidebar-nav-btn ${activeTab === 'webcam' ? 'active' : ''}`}
+            onClick={() => handleTabChange('webcam')}
+          >
+            <Camera size={18} />
+            {!sidebarCollapsed && <span>Webcam Scanner</span>}
+          </button>
+
+          <button
+            className={`sidebar-nav-btn ${activeTab === 'upload' ? 'active' : ''}`}
+            onClick={() => handleTabChange('upload')}
+          >
+            <Image size={18} />
+            {!sidebarCollapsed && <span>Upload Image</span>}
+          </button>
+
+          <button
+            className={`sidebar-nav-btn ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => handleTabChange('history')}
+          >
+            <Clock size={18} />
+            {!sidebarCollapsed && <span>Scan History</span>}
+          </button>
+
+          {isBackendConnected && (
+            <button
+              className={`sidebar-nav-btn ${activeTab === 'users' ? 'active' : ''}`}
+              onClick={() => handleTabChange('users')}
+            >
+              <Users size={18} />
+              {!sidebarCollapsed && <span>Team Management</span>}
+            </button>
+          )}
+          
+          <button
+            className="sidebar-nav-btn"
+            style={{ marginTop: 'auto', borderTop: '1px solid var(--border-glass)' }}
+            onClick={() => {
+              localStorage.removeItem('access_token');
+              setIsAuthenticated(false);
+            }}
+          >
+            <ShieldCheck size={18} />
+            {!sidebarCollapsed && <span>Logout</span>}
+          </button>
+
+        </nav>
