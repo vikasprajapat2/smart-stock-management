@@ -95,7 +95,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
     return (
       <div className="glass-panel results-card" style={{ textAlign: 'center', padding: '3rem 1.5rem', height: '100%' }}>
         <QrCode size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 1.5rem', opacity: 0.3 }} />
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#fff', marginBottom: '0.5rem' }}>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
           Waiting for Scan
         </h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '280px', margin: '0 auto' }}>
@@ -108,7 +108,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
   return (
     <div className="glass-panel results-card">
       <div className="result-card-header">
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>Scan Result</h3>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Scan Result</h3>
         
         {/* Badges based on type */}
         {result.type === 'upi' && (
@@ -187,7 +187,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                 {result.transaction.isError ? <AlertTriangle size={22} /> : <Check size={22} />}
               </div>
               <div>
-                <h4 style={{ color: '#fff', fontWeight: 700, fontSize: '1.05rem' }}>
+                <h4 style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.05rem' }}>
                   {result.transaction.isError ? 'Transaction Rejected' : 'Inventory Registered'}
                 </h4>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -205,7 +205,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>Scanned Code</label>
-                    <span style={{ fontFamily: 'var(--font-mono)', color: '#fff' }}>{result.transaction.barcode}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{result.transaction.barcode}</span>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>Operation Requested</label>
@@ -220,19 +220,19 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 
                 {/* Product Name */}
-                <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                <div style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '0.5rem' }}>
                   <label style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>Product Name</label>
-                  <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff' }}>{result.transaction.productName}</span>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>{result.transaction.productName}</span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>SKU Code</label>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#fff' }}>{result.transaction.sku}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)' }}>{result.transaction.sku}</span>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>Barcode Number</label>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: '#fff' }}>{result.transaction.barcode}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-primary)' }}>{result.transaction.barcode}</span>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>Adjustment</label>
@@ -253,13 +253,13 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                 </div>
 
                 {result.transaction.warehouseName && (
-                  <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.8rem' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.02)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(0,0,0,0.05)', fontSize: '0.8rem' }}>
                     <label style={{ display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Warehouse Facility</label>
-                    <span style={{ fontWeight: 600, color: '#fff' }}>{result.transaction.warehouseName}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{result.transaction.warehouseName}</span>
                   </div>
                 )}
 
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.5rem' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.5rem' }}>
                   {result.transaction.message}
                 </div>
 
@@ -308,7 +308,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                 <ShoppingBag size={20} />
               </div>
               <div>
-                <h4 style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>Stock Manifest</h4>
+                <h4 style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.1rem' }}>Stock Manifest</h4>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Warehouse SKU Decoded</p>
               </div>
             </div>
@@ -379,7 +379,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
               }}>
                 <CreditCard size={24} />
               </div>
-              <h4 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>
+              <h4 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                 {result.upi.payeeName || 'Unknown Merchant'}
               </h4>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
@@ -448,13 +448,13 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                 width: '80px',
                 height: '80px',
                 borderRadius: '12px',
-                background: 'rgba(255,255,255,0.05)',
+                background: 'rgba(0,0,0,0.05)',
                 margin: '0 auto 1.5rem',
                 position: 'relative',
                 overflow: 'hidden'
               }}></div>
-              <div className="skeleton-line" style={{ width: '60%', height: '14px', background: 'rgba(255,255,255,0.05)', margin: '0 auto 0.75rem', borderRadius: '4px' }}></div>
-              <div className="skeleton-line" style={{ width: '40%', height: '10px', background: 'rgba(255,255,255,0.05)', margin: '0 auto', borderRadius: '4px' }}></div>
+              <div className="skeleton-line" style={{ width: '60%', height: '14px', background: 'rgba(0,0,0,0.05)', margin: '0 auto 0.75rem', borderRadius: '4px' }}></div>
+              <div className="skeleton-line" style={{ width: '40%', height: '10px', background: 'rgba(0,0,0,0.05)', margin: '0 auto', borderRadius: '4px' }}></div>
             </div>
           )}
 
@@ -476,7 +476,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                   <p className="product-brand">{productData.brand}</p>
                   <span style={{
                     fontSize: '0.75rem',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'rgba(0,0,0,0.05)',
                     border: '1px solid var(--border-glass)',
                     padding: '0.25rem 0.5rem',
                     borderRadius: '4px',
@@ -561,7 +561,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                 <Wifi size={20} />
               </div>
               <div>
-                <h4 style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>Wi-Fi Access</h4>
+                <h4 style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.1rem' }}>Wi-Fi Access</h4>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Scan to Connect Ready</p>
               </div>
             </div>
@@ -588,14 +588,14 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                     <button 
                       className="btn-icon-only" 
                       onClick={() => setShowPassword(!showPassword)}
-                      style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(255,255,255,0.05)' }}
+                      style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(0,0,0,0.05)' }}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                     <button 
                       className="btn-icon-only" 
                       onClick={() => handleCopy(result.wifi?.password || '')}
-                      style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(255,255,255,0.05)' }}
+                      style={{ width: '32px', height: '32px', border: 'none', background: 'rgba(0,0,0,0.05)' }}
                       title="Copy Password"
                     >
                       {copied ? <Check size={16} style={{ color: 'var(--accent-neon)' }} /> : <Copy size={16} />}
@@ -643,7 +643,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
                 <Link2 size={20} />
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <h4 style={{ color: '#fff', fontWeight: 700, fontSize: '1.05rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <h4 style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.05rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {result.rawValue.replace(/^https?:\/\//i, '').split('/')[0]}
                 </h4>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -747,7 +747,7 @@ export const ResultPanel: React.FC<ResultPanelProps> = ({ result, onClear }) => 
           100% { background-position: 200% 0; }
         }
         .skeleton-image, .skeleton-line {
-          background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+          background: linear-gradient(90deg, rgba(0,0,0,0.03) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.03) 75%);
           background-size: 200% 100%;
           animation: shimmer 1.5s infinite;
         }

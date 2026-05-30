@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Search, ShoppingBag, Loader, AlertTriangle, 
-  Check, RefreshCw, ShieldAlert, QrCode, X, Download, FileUp, FileDown, FileSpreadsheet, Edit2, Trash2
+  Check, RefreshCw, ShieldAlert, QrCode, X, Download, FileUp, FileDown, FileSpreadsheet, Edit2, Trash2, Filter
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createPortal } from 'react-dom';
@@ -22,6 +22,7 @@ export const InventoryManager: React.FC = () => {
   
   // Search & Navigation
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('');
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [formSuccess, setFormSuccess] = useState<string>('');
   const [qrPopupProduct, setQrPopupProduct] = useState<Product | null>(null);
@@ -302,20 +303,44 @@ export const InventoryManager: React.FC = () => {
   };
 
   const handleDeleteProduct = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this product? It will fail if there is existing inventory.')) return;
+    if (!confirm('Are you sure you want to delete this product?')) return;
     try {
       await deleteProduct(id);
       setFormSuccess('Product deleted successfully.');
       await loadData(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to delete product.');
+      const msg = err.message || 'Failed to delete product.';
+      // If deletion was blocked due to dependencies, offer force delete
+      if (msg.startsWith('Cannot delete product')) {
+        const forceConfirm = confirm(
+          `${msg}\n\nWould you like to FORCE DELETE this product?\n\n⚠️ WARNING: This will permanently remove ALL associated stock, logs, orders, and history. This action cannot be undone.`
+        );
+        if (forceConfirm) {
+          try {
+            await deleteProduct(id, true);
+            setFormSuccess('Product and all associated data force-deleted successfully.');
+            setError('');
+            await loadData(true);
+          } catch (forceErr: any) {
+            setError(forceErr.message || 'Force delete failed.');
+          }
+        } else {
+          setError(msg);
+        }
+      } else {
+        setError(msg);
+      }
     }
   };
 
   // Filtered products list
   const filteredProducts = products
     .filter(p => {
+      // Category filter
+      if (filterCategoryId && p.category_id?.toString() !== filterCategoryId) return false;
+      // Text search
       const s = searchTerm.toLowerCase();
+      if (!s) return true;
       return (
         (p.product_name || '').toLowerCase().includes(s) ||
         (p.sku || '').toLowerCase().includes(s) ||
@@ -372,6 +397,31 @@ export const InventoryManager: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             disabled={!isConnected}
           />
+        </div>
+
+        {/* Category Filter Dropdown */}
+        <div style={{ flex: '0 1 200px', minWidth: '150px' }}>
+          <select
+            className="camera-select"
+            style={{
+              width: '100%',
+              padding: '0.6rem 0.75rem',
+              fontSize: '0.85rem',
+              background: 'rgba(0, 0, 0, 0.04)',
+              border: '1px solid rgba(0, 0, 0, 0.08)',
+              borderRadius: '8px',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+            }}
+            value={filterCategoryId}
+            onChange={(e) => setFilterCategoryId(e.target.value)}
+            disabled={!isConnected}
+          >
+            <option value="">All Categories</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.id}>{c.category_name}</option>
+            ))}
+          </select>
         </div>
 
         {/* Action Buttons */}
@@ -469,8 +519,8 @@ export const InventoryManager: React.FC = () => {
 
       {/* Add Product Form */}
       {showAddForm && (
-        <form onSubmit={handleSaveProduct} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <form onSubmit={handleSaveProduct} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0, 0, 0, 0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <ShoppingBag size={18} style={{ color: 'var(--accent-cyan)' }} />
             {editingProductId ? 'Edit Product Details' : 'Register Product Details'}
           </h3>
@@ -640,7 +690,7 @@ export const InventoryManager: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1rem', marginTop: '0.5rem' }}>
             {/* Initial Stock */}
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>
@@ -724,7 +774,7 @@ export const InventoryManager: React.FC = () => {
           {filteredProducts.length === 0 ? (
             <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               <ShoppingBag size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
-              <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: '0.25rem' }}>No Products Found</h4>
+              <h4 style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: '0.25rem' }}>No Products Found</h4>
               <p style={{ fontSize: '0.85rem' }}>
                 {searchTerm ? 'Try adjusting your search keywords.' : 'Add your first product to get started!'}
               </p>
@@ -733,7 +783,7 @@ export const InventoryManager: React.FC = () => {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-glass)' }}>
+                  <tr style={{ background: 'rgba(0,0,0,0.03)', borderBottom: '1px solid var(--border-glass)' }}>
                     <th style={{ padding: '1rem' }}>Product Details</th>
                     <th style={{ padding: '1rem' }}>SKU Code</th>
                     <th style={{ padding: '1rem' }}>Barcode</th>
@@ -750,11 +800,11 @@ export const InventoryManager: React.FC = () => {
                       <tr 
                         key={p.id} 
                         className="table-row-hover"
-                        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'var(--transition-smooth)' }}
+                        style={{ borderBottom: '1px solid rgba(0,0,0,0.04)', transition: 'var(--transition-smooth)' }}
                       >
                         {/* Name & Category */}
                         <td style={{ padding: '1rem' }}>
-                          <div style={{ fontWeight: 600, color: '#fff' }}>{p.product_name}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.product_name}</div>
                           {p.category && (
                             <span style={{ 
                               fontSize: '0.7rem', 
@@ -781,7 +831,7 @@ export const InventoryManager: React.FC = () => {
                         </td>
 
                         {/* Price */}
-                        <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600, color: '#fff' }}>
+                        <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {p.selling_price ? `₹${parseFloat(p.selling_price.toString()).toFixed(2)}` : '—'}
                         </td>
 
@@ -879,7 +929,7 @@ export const InventoryManager: React.FC = () => {
           to { transform: rotate(360deg); }
         }
         .table-row-hover:hover {
-          background: rgba(255, 255, 255, 0.02);
+          background: rgba(0, 0, 0, 0.02);
         }
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -940,14 +990,14 @@ export const InventoryManager: React.FC = () => {
                 borderRadius: '50%',
                 transition: 'all 0.2s'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
             >
               <X size={20} />
             </button>
 
             <div style={{ textAlign: 'center' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                 {qrPopupProduct.product_name}
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -959,7 +1009,7 @@ export const InventoryManager: React.FC = () => {
               <div
                 id="qr-code-render-box"
                 style={{
-                  background: '#fff',
+                  background: 'var(--text-primary)',
                   padding: '1.25rem',
                   borderRadius: '16px',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
@@ -982,7 +1032,7 @@ export const InventoryManager: React.FC = () => {
             <div style={{
               width: '100%',
               padding: '0.75rem',
-              background: 'rgba(255,255,255,0.03)',
+              background: 'rgba(0,0,0,0.03)',
               borderRadius: '8px',
               border: '1px solid var(--border-glass)',
               textAlign: 'center'

@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
+from typing import Optional
 import logging
 
 from app.database import SessionLocal
@@ -175,17 +177,73 @@ def create_inventory(
         )
 
 
-# GET ALL INVENTORY
+# GET ALL INVENTORY (with optional filters)
 @router.get(
     "/",
     response_model=list[InventoryResponse]
 )
 def get_inventory(
+    category_id: Optional[int] = None,
+    warehouse_id: Optional[int] = None,
+    stock_status: Optional[str] = Query(
+        None,
+        pattern="^(IN_STOCK|LOW_STOCK|OUT_OF_STOCK)$"
+    ),
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
-):
+    ):
 
-    inventory = db.query(Inventory).all()
+    query = db.query(Inventory).join(
+        Product, Inventory.product_id == Product.id
+    )
+
+    # Filter by warehouse
+    if warehouse_id is not None:
+        query = query.filter(Inventory.warehouse_id == warehouse_id)
+
+    # Filter by product category
+    if category_id is not None:
+        query = query.filter(Product.category_id == category_id)
+
+    # Text search on product name, SKU, or barcode
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            or_(
+                Product.product_name.ilike(search_filter),
+                Product.sku.ilike(search_filter),
+                Product.barcode.ilike(search_filter)
+            )
+        )
+
+    inventory = query.all()
+
+    # Post-filter by stock status (requires product reorder_level comparison)
+    if stock_status:
+        filtered = []
+        for inv in inventory:
+            product = db.query(Product).filter(Product.id == inv.product_id).first()
+            if stock_status == "OUT_OF_STOCK":
+                if inv.quantity <= 0:
+                    filtered.append(inv)
+            elif stock_status == "LOW_STOCK":
+                if (
+                    inv.quantity > 0
+                    and product
+                    and product.reorder_level is not None
+                    and inv.quantity <= product.reorder_level
+                ):
+                    filtered.append(inv)
+            elif stock_status == "IN_STOCK":
+                if inv.quantity > 0:
+                    # If product has a reorder_level, only show items above it
+                    if product and product.reorder_level is not None:
+                        if inv.quantity > product.reorder_level:
+                            filtered.append(inv)
+                    else:
+                        filtered.append(inv)
+        return filtered
 
     return inventory
 

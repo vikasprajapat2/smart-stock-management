@@ -20,9 +20,15 @@ class ProductionOrder(Base):
 
     status = Column(String, default="PENDING")
 
+    priority = Column(String, default="NORMAL") # HIGH, NORMAL, LOW
+    
+    sales_order_id = Column(Integer, ForeignKey("sales_orders.id"), nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     product = relationship("Product")
+    
+    sales_order = relationship("SalesOrder", back_populates="production_orders")
 
     bom = relationship("BOM")
 

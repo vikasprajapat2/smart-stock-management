@@ -9,7 +9,6 @@ import {
   fetchDashboardStats, fetchNotifications, markNotificationRead,
   fetchSuppliers, createSupplier, updateSupplier, deleteSupplier, fetchGSTDetails, fetchSupplierHistory,
   fetchPurchaseOrders, createPurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, downloadPurchaseOrderPdf, receivePurchaseOrder,
-  fetchOrders, createOrder, deleteSalesOrder,
   fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, fetchWarehouseInventory,
   fetchProducts,
   fetchUsers, updateUserRole, deactivateUser, activateUser, deleteUser,
@@ -18,7 +17,7 @@ import {
 } from '../utils/api';
 import type {
   Product, Supplier, Warehouse, PurchaseOrderResponse,
-  SalesOrderResponse, Notification, DashboardStats, User, CategoryResponse, WarehouseInventoryItem
+  Notification, DashboardStats, User, CategoryResponse, WarehouseInventoryItem
 } from '../utils/api';
 
 interface Role {
@@ -79,7 +78,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
       {/* Header Overview */}
       <div className="glass-panel" style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)', border: '1px solid rgba(6, 182, 212, 0.2)' }}>
         <div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>System Dashboard Overview</h2>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>System Dashboard Overview</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>A comprehensive brief of your enterprise resources and real-time operations.</p>
         </div>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -101,7 +100,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
             <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Total Products</span>
             <Tag size={20} style={{ color: 'var(--accent-cyan)' }} />
           </div>
-          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{stats?.total_products || 0}</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats?.total_products || 0}</div>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Registered catalog SKUs</p>
         </div>
 
@@ -115,7 +114,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
             <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Low Stock Alerts</span>
             {stats?.low_stock_alerts ? <AlertTriangle size={20} style={{ color: '#ef4444' }} /> : <CheckCircle size={20} style={{ color: '#22c55e' }} />}
           </div>
-          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: stats?.low_stock_alerts ? '#fca5a5' : '#fff', lineHeight: 1 }}>{stats?.low_stock_alerts || 0}</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: stats?.low_stock_alerts ? '#fca5a5' : 'var(--text-primary)', lineHeight: 1 }}>{stats?.low_stock_alerts || 0}</div>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Items below reorder level</p>
         </div>
 
@@ -125,7 +124,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
             <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Total Units in Stock</span>
             <Database size={20} style={{ color: 'var(--accent-neon)' }} />
           </div>
-          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{stats?.total_inventory_quantity || 0}</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats?.total_inventory_quantity || 0}</div>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Across {stats?.total_inventory_records || 0} inventory records</p>
         </div>
 
@@ -138,7 +137,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
             <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>Action Items</span>
             <AlertCircle size={20} style={{ color: stats?.unread_notifications ? '#fbbf24' : '#64748b' }} />
           </div>
-          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fff', lineHeight: 1 }}>{stats?.unread_notifications || 0}</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{stats?.unread_notifications || 0}</div>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Pending system notifications</p>
         </div>
 
@@ -153,7 +152,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Purchase Orders</div>
              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent-purple)' }}>{stats?.purchase_orders || 0}</div>
           </div>
-          <div style={{ width: '1px', height: '100%', background: 'rgba(255,255,255,0.1)' }}></div>
+          <div style={{ width: '1px', height: '100%', background: 'rgba(0,0,0,0.1)' }}></div>
           <div style={{ flex: 1 }}>
              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Sales Orders</div>
              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#3b82f6' }}>{stats?.sales_orders || 0}</div>
@@ -166,7 +165,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>BOM Recipes</div>
              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f59e0b' }}>{stats?.total_boms || 0}</div>
           </div>
-          <div style={{ width: '1px', height: '100%', background: 'rgba(255,255,255,0.1)' }}></div>
+          <div style={{ width: '1px', height: '100%', background: 'rgba(0,0,0,0.1)' }}></div>
           <div style={{ flex: 1 }}>
              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Active Prod. Runs</div>
              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ec4899' }}>{stats?.active_production_orders || 0}</div>
@@ -179,7 +178,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Warehouses</div>
              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#10b981' }}>{stats?.total_warehouses || 0}</div>
           </div>
-          <div style={{ width: '1px', height: '100%', background: 'rgba(255,255,255,0.1)' }}></div>
+          <div style={{ width: '1px', height: '100%', background: 'rgba(0,0,0,0.1)' }}></div>
           <div style={{ flex: 1 }}>
              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Suppliers</div>
              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#8b5cf6' }}>{stats?.total_suppliers || 0}</div>
@@ -193,14 +192,14 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
         
         {/* Left side: Advanced SVG Micro-Chart & Logs */}
         <div className="glass-panel" style={{ padding: '1.5rem', minHeight: '380px', display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <BarChart2 size={20} style={{ color: 'var(--accent-cyan)' }} />
             Business Flow & System Performance
           </h3>
           
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Visual SVG Line graph indicating active log flows */}
-            <div style={{ position: 'relative', width: '100%', height: '180px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', padding: '1rem' }}>
+            <div style={{ position: 'relative', width: '100%', height: '180px', background: 'rgba(0,0,0,0.25)', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.05)', padding: '1rem' }}>
               <svg viewBox="0 0 600 150" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
                 <defs>
                   <linearGradient id="chart-glow2" x1="0" y1="0" x2="0" y2="1">
@@ -214,7 +213,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
                 </defs>
                 {/* Gridlines */}
                 {[30, 70, 110, 150].map(y => (
-                  <line key={y} x1="0" y1={y} x2="600" y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" strokeDasharray="4 4" />
+                  <line key={y} x1="0" y1={y} x2="600" y2={y} stroke="rgba(0,0,0,0.04)" strokeWidth="1" strokeDasharray="4 4" />
                 ))}
                 
                 {/* INVENTORY FLOW LINE */}
@@ -239,18 +238,18 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
                   <span style={{ fontWeight: 600 }}>Overall Storage Utilization</span>
-                  <span style={{ color: '#fff', fontWeight: 700 }}>64%</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>64%</span>
                 </div>
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{ width: '64%', height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan), var(--accent-neon))', borderRadius: '4px' }}></div>
                 </div>
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
                   <span style={{ fontWeight: 600 }}>Order Fulfillment Rate</span>
-                  <span style={{ color: '#fff', fontWeight: 700 }}>92%</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>92%</span>
                 </div>
-                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '8px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{ width: '92%', height: '100%', background: 'linear-gradient(90deg, var(--accent-purple), #ec4899)', borderRadius: '4px' }}></div>
                 </div>
               </div>
@@ -261,7 +260,7 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
         {/* Right side: Warnings / Notifications Feed */}
         <div className="glass-panel" style={{ padding: '1.5rem', minHeight: '380px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Clock size={20} style={{ color: '#fbbf24' }} />
               Recent Alerts & Activity
             </h3>
@@ -274,15 +273,15 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
             {alerts.length === 0 ? (
               <div style={{ padding: '4rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <CheckCircle size={40} style={{ color: 'var(--accent-neon)', margin: '0 auto 1rem', opacity: 0.5 }} />
-                <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff' }}>All Clear!</p>
+                <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>All Clear!</p>
                 <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>No pending alerts or notifications.</p>
               </div>
             ) : (
               alerts.map(n => (
                 <div key={n.id} style={{ 
                   padding: '1rem', 
-                  background: 'rgba(255, 255, 255, 0.02)', 
-                  border: '1px solid rgba(255, 255, 255, 0.05)', 
+                  background: 'rgba(0, 0, 0, 0.02)', 
+                  border: '1px solid rgba(0, 0, 0, 0.05)', 
                   borderLeft: `4px solid ${n.type === 'error' ? '#ef4444' : n.type === 'warning' ? '#fbbf24' : 'var(--accent-cyan)'}`,
                   borderRadius: '8px',
                   display: 'flex',
@@ -292,10 +291,10 @@ export const DashboardView: React.FC<{ onNavigate: (tab: any) => void }> = ({ on
                   cursor: 'pointer'
                 }}>
                   <div style={{ color: n.type === 'error' ? '#ef4444' : n.type === 'warning' ? '#fbbf24' : 'var(--accent-cyan)', marginTop: '0.15rem' }}>
-                    {n.type === 'error' ? <AlertTriangle size={18} /> : n.type === 'warning' ? <AlertCircle size={18} /> : <div style={{width:'18px', height:'18px', borderRadius:'50%', background:'var(--accent-cyan)', display:'flex', alignItems:'center', justifyContent:'center'}}><div style={{width:'6px', height:'6px', background:'#fff', borderRadius:'50%'}}></div></div>}
+                    {n.type === 'error' ? <AlertTriangle size={18} /> : n.type === 'warning' ? <AlertCircle size={18} /> : <div style={{width:'18px', height:'18px', borderRadius:'50%', background:'var(--accent-cyan)', display:'flex', alignItems:'center', justifyContent:'center'}}><div style={{width:'6px', height:'6px', background:'var(--text-primary)', borderRadius:'50%'}}></div></div>}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{n.title}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{n.title}</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem', lineHeight: '1.4' }}>{n.message}</div>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                       {new Date(n.created_at).toLocaleString()}
@@ -517,7 +516,7 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Landmark size={20} style={{ color: 'var(--accent-cyan)' }} />
           Storage Hub Facilities
         </h3>
@@ -552,8 +551,8 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
       )}
 
       {showAddForm && (
-        <form onSubmit={handleSaveWarehouse} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h4 style={{ fontSize: '1rem', color: '#fff' }}>{editingWhId ? 'Edit Warehouse' : 'New Warehouse'}</h4>
+        <form onSubmit={handleSaveWarehouse} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <h4 style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{editingWhId ? 'Edit Warehouse' : 'New Warehouse'}</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>Name</label>
@@ -583,8 +582,8 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                 style={{
                   padding: '1rem',
                   borderRadius: '10px',
-                  background: selectedWhId === w.id ? 'rgba(139, 92, 246, 0.08)' : 'rgba(255,255,255,0.01)',
-                  border: selectedWhId === w.id ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(255,255,255,0.03)',
+                  background: selectedWhId === w.id ? 'rgba(139, 92, 246, 0.08)' : 'rgba(0,0,0,0.01)',
+                  border: selectedWhId === w.id ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(0,0,0,0.03)',
                   cursor: 'pointer',
                   transition: 'var(--transition-smooth)',
                   display: 'flex',
@@ -595,7 +594,7 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{ fontSize: '1.2rem' }}>📦</span>
                   <div>
-                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: selectedWhId === w.id ? '#fff' : 'var(--text-secondary)' }}>{w.warehouse_name}</h4>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: selectedWhId === w.id ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{w.warehouse_name}</h4>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Location: {w.location}</p>
                   </div>
                 </div>
@@ -617,9 +616,9 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
         {/* Right side: Selected Warehouse stock */}
         {selectedWh && (
           <div className="glass-panel" style={{ padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
               <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>{selectedWh.warehouse_name}</h3>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{selectedWh.warehouse_name}</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Logistics Hub Location: {selectedWh.location}</p>
               </div>
               <span style={{ fontSize: '0.75rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-neon)', padding: '0.25rem 0.6rem', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '20px', fontWeight: 700 }}>
@@ -638,7 +637,7 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
               
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                  <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', background: 'rgba(0,0,0,0.02)' }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>Product Name</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>SKU Code</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center' }}>Available Stock</th>
@@ -651,8 +650,8 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                     const qty = invItem ? invItem.quantity : 0;
                     const reserved = invItem ? invItem.reserved_quantity : 0;
                     return (
-                      <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                        <td style={{ padding: '0.75rem', color: '#fff', fontWeight: 600 }}>{p.product_name}</td>
+                      <tr key={p.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
+                        <td style={{ padding: '0.75rem', color: 'var(--text-primary)', fontWeight: 600 }}>{p.product_name}</td>
                         <td style={{ padding: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{p.sku}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 700, color: qty > 0 ? 'var(--accent-neon)' : 'var(--text-muted)' }}>
                           {qty} {p.unit || 'pcs'}
@@ -668,8 +667,8 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
             </div>
 
             {/* Warehouse Inventory Operations Card */}
-            <div style={{ marginTop: '2rem', borderTop: '1px dashed rgba(255,255,255,0.08)', paddingTop: '1.5rem' }}>
-              <h4 style={{ fontSize: '0.95rem', color: '#fff', marginBottom: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ marginTop: '2rem', borderTop: '1px dashed rgba(0,0,0,0.08)', paddingTop: '1.5rem' }}>
+              <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Clock size={16} style={{ color: 'var(--accent-purple)' }} />
                 Inventory Operations & Movements
               </h4>
@@ -701,7 +700,7 @@ export const WarehouseView: React.FC<{ userRole?: string }> = ({ userRole = "STA
               </div>
 
               {/* Form panel */}
-              <form onSubmit={handleInventoryOperation} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px' }}>
+              <form onSubmit={handleInventoryOperation} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.01)', border: '1px solid rgba(0,0,0,0.02)', padding: '1rem', borderRadius: '8px' }}>
                 
                 {operationType === 'ADJUST' && (
                   <div>
@@ -1040,8 +1039,8 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
 
       {/* Add/Edit Supplier Form */}
       {showAddForm && (
-        <form onSubmit={handleSaveSupplier} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <form onSubmit={handleSaveSupplier} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Landmark size={18} style={{ color: 'var(--accent-cyan)' }} />
             {editingSupplierId ? 'Edit Vendor Profile' : 'Register Business Vendor Profile'}
           </h3>
@@ -1155,7 +1154,7 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-glass)' }}>
+                <tr style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-glass)' }}>
                   <th style={{ padding: '1rem', textAlign: 'left' }}>Supplier Details</th>
                   <th style={{ padding: '1rem', textAlign: 'left' }}>GSTIN Status</th>
                   <th style={{ padding: '1rem', textAlign: 'left' }}>Contact Info</th>
@@ -1165,9 +1164,9 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
               </thead>
               <tbody>
                 {filteredSuppliers.map(s => (
-                  <tr key={s.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <tr key={s.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: 700, color: '#fff' }}>{s.supplier_name}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{s.supplier_name}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>ID: Supplier-{s.id}</div>
                     </td>
                     <td style={{ padding: '1rem' }}>
@@ -1185,7 +1184,7 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                       )}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ color: '#fff' }}>{s.contact_name || 'N/A'}</div>
+                      <div style={{ color: 'var(--text-primary)' }}>{s.contact_name || 'N/A'}</div>
                       {s.email && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{s.email}</div>}
                       {s.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.phone}</div>}
                     </td>
@@ -1256,13 +1255,13 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
             {/* Modal Header */}
             <div style={{
               padding: '1.25rem 1.5rem',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
             }}>
               <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
                   <Clock size={18} style={{ color: 'var(--accent-purple)' }} />
                   Purchase History
                 </h3>
@@ -1276,7 +1275,7 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                 }}
                 className="btn-icon-only"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'rgba(0, 0, 0, 0.05)',
                   border: 'none',
                   color: 'var(--text-secondary)',
                   borderRadius: '50%',
@@ -1316,8 +1315,8 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                   {supplierHistory.map((po: any) => (
                     <div key={po.id} style={{
                       padding: '1rem',
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      border: '1px solid rgba(255, 255, 255, 0.04)',
+                      background: 'rgba(0, 0, 0, 0.02)',
+                      border: '1px solid rgba(0, 0, 0, 0.04)',
                       borderRadius: '10px',
                       display: 'flex',
                       flexDirection: 'column',
@@ -1344,8 +1343,8 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                         {po.items.map((item: any) => (
                           <span key={item.id} style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.05)',
+                            background: 'rgba(0,0,0,0.03)',
+                            border: '1px solid rgba(0,0,0,0.05)',
                             padding: '0.15rem 0.45rem',
                             borderRadius: '4px',
                             fontSize: '0.7rem',
@@ -1361,12 +1360,12 @@ export const SuppliersView: React.FC<{ userRole?: string }> = ({ userRole = "STA
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         fontSize: '0.75rem',
-                        borderTop: '1px dashed rgba(255, 255, 255, 0.05)',
+                        borderTop: '1px dashed rgba(0, 0, 0, 0.05)',
                         paddingTop: '0.5rem',
                         marginTop: '0.25rem'
                       }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Wh Destination: <strong style={{ color: '#fff' }}>{po.warehouse_name || 'N/A'}</strong></span>
-                        <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.85rem' }}>Total: ₹{Number(po.total_amount).toFixed(2)}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Wh Destination: <strong style={{ color: 'var(--text-primary)' }}>{po.warehouse_name || 'N/A'}</strong></span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.85rem' }}>Total: ₹{Number(po.total_amount).toFixed(2)}</span>
                       </div>
                     </div>
                   ))}
@@ -1591,7 +1590,7 @@ export const PurchaseOrdersView: React.FC = () => {
       
       {/* Action Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff' }}>Procurement & Purchase Invoices</h3>
+        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>Procurement & Purchase Invoices</h3>
         <button
           onClick={() => {
             setShowBuilder(!showBuilder);
@@ -1621,8 +1620,8 @@ export const PurchaseOrdersView: React.FC = () => {
 
       {/* Procurement PO Builder Form */}
       {showBuilder && (
-        <form onSubmit={handleSubmitPO} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <form onSubmit={handleSubmitPO} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Layers size={18} style={{ color: 'var(--accent-purple)' }} />
             Procurement PO Compiler
           </h3>
@@ -1674,9 +1673,9 @@ export const PurchaseOrdersView: React.FC = () => {
           </div>
 
           {/* Add product list items */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+          <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-              <label style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 700 }}>Procured Items Catalog</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 700 }}>Procured Items Catalog</label>
               <button
                 type="button"
                 onClick={handleAddItem}
@@ -1746,7 +1745,7 @@ export const PurchaseOrdersView: React.FC = () => {
           </div>
 
           {/* Subtotal */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem', fontWeight: 700, fontSize: '1.05rem', color: '#fff' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1rem', fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
             Total Compiled Amount: ₹{calculateTotal().toFixed(2)}
           </div>
 
@@ -1775,9 +1774,9 @@ export const PurchaseOrdersView: React.FC = () => {
             </div>
           ) : (
             pos.map(po => (
-              <div key={po.id} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(255,255,255,0.015)' }}>
+              <div key={po.id} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.015)' }}>
                 {/* Header details */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '0.75rem', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.04)', paddingBottom: '0.75rem', gap: '0.5rem' }}>
                   <div>
                     <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', color: 'var(--accent-purple)', fontWeight: 700 }}>{po.po_number}</span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>Order Date: {new Date(po.order_date).toLocaleDateString()}</span>
@@ -1844,11 +1843,11 @@ export const PurchaseOrdersView: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.85rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Warehouse Hub</label>
-                    <span style={{ fontWeight: 600, color: '#fff' }}>{po.warehouse?.warehouse_name || 'N/A'}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{po.warehouse?.warehouse_name || 'N/A'}</span>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Supplier Entity</label>
-                    <span style={{ fontWeight: 600, color: '#fff' }}>{po.supplier?.supplier_name || 'Seeded Partner'}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{po.supplier?.supplier_name || 'Seeded Partner'}</span>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Expected Delivery</label>
@@ -1856,7 +1855,7 @@ export const PurchaseOrdersView: React.FC = () => {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <label style={{ display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Invoice Valuation</label>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>₹{Number(po.total_amount || 0).toFixed(2)}</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>₹{Number(po.total_amount || 0).toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -1865,7 +1864,7 @@ export const PurchaseOrdersView: React.FC = () => {
                   <label style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Manifest List</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                     {(po.items || []).map((item, id) => (
-                      <span key={id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: 'var(--text-secondary)' }}>
+                      <span key={id} style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: 'var(--text-secondary)' }}>
                         {item.product_name || 'Product'} (x{item.quantity}) — ₹{Number(item.unit_price || 0).toFixed(2)}
                       </span>
                     ))}
@@ -1924,7 +1923,7 @@ export const PurchaseOrdersView: React.FC = () => {
             </button>
 
             <div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <CheckCircle size={18} style={{ color: 'var(--accent-neon)' }} />
                 Compile Goods Receipt Note (GRN)
               </h3>
@@ -1963,10 +1962,10 @@ export const PurchaseOrdersView: React.FC = () => {
             </div>
 
             {/* Items Verification Table */}
-            <div style={{ border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ border: '1px solid rgba(0,0,0,0.06)', borderRadius: '8px', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <tr style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
                     <th style={{ padding: '0.75rem' }}>Incoming Item</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center' }}>Ordered Qty</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center' }}>Received Qty *</th>
@@ -1975,8 +1974,8 @@ export const PurchaseOrdersView: React.FC = () => {
                 </thead>
                 <tbody>
                   {grnItems.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td style={{ padding: '0.75rem', color: '#fff', fontWeight: 600 }}>
+                    <tr key={idx} style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                      <td style={{ padding: '0.75rem', color: 'var(--text-primary)', fontWeight: 600 }}>
                         {item.product_name}
                       </td>
                       <td style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -2033,7 +2032,7 @@ export const PurchaseOrdersView: React.FC = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '1rem' }}>
               <button 
                 type="button" 
                 onClick={() => { setShowGRNModal(false); setSelectedPOForGRN(null); }}
@@ -2067,320 +2066,6 @@ export const PurchaseOrdersView: React.FC = () => {
 
 
 // ─── 5. SALES ORDERS VIEW ───────────────────────────────────
-
-export const OrdersView: React.FC = () => {
-  const [orders, setOrders] = useState<SalesOrderResponse[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  // New Sales Creator states
-  const [showBilling, setShowBilling] = useState<boolean>(false);
-  const [customerName, setCustomerName] = useState<string>('');
-  
-  const [salesItems, setSalesItems] = useState<Array<{ product_id: number; quantity: number; price: number }>>([]);
-  const [billingLoading, setBillingLoading] = useState<boolean>(false);
-  const [successMsg, setSuccessMsg] = useState<string>('');
-  const [errorMsg, setErrorMsg] = useState<string>('');
-
-  const loadData = async () => {
-    try {
-      const [ordData, prodData] = await Promise.all([
-        fetchOrders(),
-        fetchProducts()
-      ]);
-      setOrders(ordData);
-      setProducts(prodData);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const handleAddItem = () => {
-    if (products.length === 0) return;
-    setSalesItems([...salesItems, { product_id: products[0].id, quantity: 1, price: products[0].selling_price || 10 }]);
-  };
-
-  const handleRemoveItem = (index: number) => {
-    setSalesItems(salesItems.filter((_, i) => i !== index));
-  };
-
-  const handleProductSelect = (index: number, prodId: number) => {
-    const prod = products.find(p => p.id === prodId);
-    if (!prod) return;
-    const copy = [...salesItems];
-    copy[index] = {
-      ...copy[index],
-      product_id: prodId,
-      price: prod.selling_price || 10
-    };
-    setSalesItems(copy);
-  };
-
-  const handleItemChange = (index: number, key: string, val: any) => {
-    const copy = [...salesItems];
-    copy[index] = { ...copy[index], [key]: val };
-    setSalesItems(copy);
-  };
-
-  const handleSubmitSales = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (salesItems.length === 0) {
-      setErrorMsg('Add at least one product item to create invoice bill.');
-      return;
-    }
-
-    setBillingLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    try {
-      await createOrder({
-        customer_name: customerName,
-        total_amount: calculateTotal(),
-        status: 'COMPLETED',
-        items: salesItems
-      });
-
-      setSuccessMsg('Sales Invoice generated successfully! Warehouse database decremented.');
-      setSalesItems([]);
-      setCustomerName('');
-      setShowBilling(false);
-      await loadData();
-    } catch (e: any) {
-      setErrorMsg(e.message || 'Billing failed. Check database stock quantities.');
-    } finally {
-      setBillingLoading(false);
-    }
-  };
-
-  const calculateTotal = () => {
-    return salesItems.reduce((acc, item) => acc + (item.quantity * item.price), 0);
-  };
-
-  const handleDeleteOrder = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this Sales Invoice?')) return;
-    try {
-      await deleteSalesOrder(id);
-      setSuccessMsg('Sales Invoice deleted successfully.');
-      await loadData();
-    } catch (e: any) {
-      setErrorMsg(e.message || 'Failed to delete Sales Invoice.');
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      
-      {/* Action Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff' }}>Sales Billing & Client Invoices</h3>
-        <button
-          onClick={() => {
-            setShowBilling(!showBilling);
-            setErrorMsg('');
-            setSuccessMsg('');
-          }}
-          className="scan-action-btn btn-primary"
-          style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Plus size={16} />
-          {showBilling ? 'Close Bill Center' : 'Generate Sales Invoice'}
-        </button>
-      </div>
-
-      {/* Notifications */}
-      {successMsg && (
-        <div className="glass-panel" style={{ padding: '0.75rem 1rem', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: '8px', color: 'var(--accent-neon)', fontSize: '0.85rem' }}>
-          <Check size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> {successMsg}
-        </div>
-      )}
-      {errorMsg && (
-        <div className="glass-panel" style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', color: '#f87171', fontSize: '0.85rem' }}>
-          <AlertCircle size={16} style={{ marginRight: '0.5rem', verticalAlign: 'middle' }} /> {errorMsg}
-        </div>
-      )}
-
-      {/* Billing Invoice Creator */}
-      {showBilling && (
-        <form onSubmit={handleSubmitSales} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ShoppingBag size={18} style={{ color: 'var(--accent-neon)' }} />
-            Sales POS Invoice Billing Center
-          </h3>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem', fontWeight: 600 }}>Customer / Client Name *</label>
-            <input
-              type="text"
-              required
-              className="history-search-input"
-              style={{ width: '100%' }}
-              placeholder="e.g. John Doe International"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-            />
-          </div>
-
-          {/* Add product list items */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-              <label style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 700 }}>Invoice Sold Items</label>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="scan-action-btn btn-secondary"
-                style={{ width: 'auto', padding: '0.4rem 0.85rem', fontSize: '0.75rem' }}
-              >
-                + Add Sold Product
-              </button>
-            </div>
-
-            {salesItems.length === 0 ? (
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '1.5rem' }}>No products listed.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {salesItems.map((item, idx) => (
-                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1.5fr 0.8fr 0.8fr auto', gap: '0.75rem', alignItems: 'center' }}>
-                    
-                    {/* Choose Product */}
-                    <select
-                      className="camera-select"
-                      style={{ padding: '0.55rem 0.65rem', fontSize: '0.8rem' }}
-                      value={item.product_id}
-                      onChange={(e) => handleProductSelect(idx, parseInt(e.target.value))}
-                    >
-                      {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.product_name} (₹{p.selling_price || 0})</option>
-                      ))}
-                    </select>
-
-                    {/* Quantity */}
-                    <input
-                      type="number"
-                      min="1"
-                      className="history-search-input"
-                      style={{ padding: '0.5rem', fontSize: '0.8rem' }}
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(idx, 'quantity', parseInt(e.target.value) || 1)}
-                    />
-
-                    {/* Price */}
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      className="history-search-input"
-                      style={{ padding: '0.5rem', fontSize: '0.8rem' }}
-                      placeholder="Selling Cost"
-                      value={item.price}
-                      onChange={(e) => handleItemChange(idx, 'price', parseFloat(e.target.value) || 0)}
-                    />
-
-                    {/* Remove */}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(idx)}
-                      className="btn-icon-only"
-                      style={{ border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', width: '32px', height: '32px' }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Subtotal */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem', fontWeight: 700, fontSize: '1.05rem', color: 'var(--accent-neon)' }}>
-            Invoice Net Total: ₹{calculateTotal().toFixed(2)}
-          </div>
-
-          <button
-            type="submit"
-            className="scan-action-btn btn-primary"
-            style={{ width: '100%', height: '44px' }}
-            disabled={billingLoading}
-          >
-            {billingLoading ? <Loader className="spin-anim" size={18} /> : 'Post Customer Invoice & Commit Stock Deduction'}
-          </button>
-        </form>
-      )}
-
-      {/* Orders List */}
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
-          <Loader className="spin-anim" size={24} style={{ color: 'var(--accent-cyan)' }} />
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {orders.length === 0 ? (
-            <div className="glass-panel" style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <Landmark size={48} style={{ margin: '0 auto 1rem', opacity: 0.15 }} />
-              <h4>No Sales Orders Found</h4>
-            </div>
-          ) : (
-            orders.map(order => (
-              <div key={order.id} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'rgba(255,255,255,0.015)' }}>
-                
-                {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.04)', paddingBottom: '0.5rem' }}>
-                  <div>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>Client: {order.customer_name}</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>ID: Invoice-{order.id}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.7rem', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--accent-neon)', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
-                      {order.status}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteOrder(order.id)}
-                      className="scan-action-btn btn-secondary"
-                      style={{ width: 'auto', padding: '0.25rem 0.65rem', fontSize: '0.7rem', height: '26px', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                {/* Billing Summary */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Invoice compiled on: {order.created_at ? new Date(order.created_at).toLocaleString() : 'N/A'}</span>
-                  <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-neon)' }}>₹{Number(order.total_amount || 0).toFixed(2)}</span>
-                </div>
-
-                {/* manifest list */}
-                {order.items && order.items.length > 0 && (
-                  <div style={{ background: 'rgba(0,0,0,0.1)', padding: '0.5rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      {(order.items || []).map((item, id) => (
-                        <span key={id} style={{ background: 'rgba(255,255,255,0.03)', padding: '0.15rem 0.45rem', borderRadius: '4px', color: 'var(--text-muted)' }}>
-                          Product ID: {item.product_id} (x{item.quantity}) — ₹{Number(item.price || 0).toFixed(2)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-    </div>
-  );
-};
-
-// ─── 6. USERS MANAGEMENT VIEW ───────────────────────────────
 
 export const UsersView: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -2460,7 +2145,7 @@ export const UsersView: React.FC = () => {
         </div>
       )}
 
-      <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <Users size={20} style={{ color: 'var(--accent-cyan)' }} />
         Team Members ({users.length})
       </h3>
@@ -2488,7 +2173,7 @@ export const UsersView: React.FC = () => {
             >
               <div style={{ fontSize: '1.5rem' }}>👤</div>
               <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{user.full_name}</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{user.full_name}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.email}</div>
               </div>
 
@@ -2499,9 +2184,9 @@ export const UsersView: React.FC = () => {
                   style={{
                     padding: '0.4rem 0.5rem',
                     borderRadius: '4px',
-                    background: 'rgba(255,255,255,0.08)',
-                    color: '#fff',
-                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: 'rgba(0,0,0,0.08)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid rgba(0,0,0,0.12)',
                     fontSize: '0.8rem',
                     minWidth: '120px'
                   }}
@@ -2545,9 +2230,9 @@ export const UsersView: React.FC = () => {
                     onClick={() => setEditingRoleId(null)}
                     style={{
                       padding: '0.4rem 0.6rem',
-                      background: 'rgba(255,255,255,0.05)',
+                      background: 'rgba(0,0,0,0.05)',
                       color: 'var(--text-secondary)',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(0,0,0,0.1)',
                       borderRadius: '4px',
                       cursor: 'pointer',
                       fontSize: '0.7rem'
@@ -2564,9 +2249,9 @@ export const UsersView: React.FC = () => {
                   }}
                   style={{
                     padding: '0.4rem 0.6rem',
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'rgba(0,0,0,0.05)',
                     color: 'var(--text-secondary)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(0,0,0,0.1)',
                     borderRadius: '4px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -2712,7 +2397,7 @@ export const CategoriesView: React.FC = () => {
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Tag size={20} style={{ color: 'var(--accent-purple)' }} />
           Product Categories ({categories.length})
         </h3>
@@ -2738,7 +2423,7 @@ export const CategoriesView: React.FC = () => {
 
       {showNewForm && (
         <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(139, 92, 246, 0.2)', background: 'rgba(139, 92, 246, 0.03)' }}>
-          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '0.75rem' }}>Add New Category</h4>
+          <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>Add New Category</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             <input
               type="text"
@@ -2747,9 +2432,9 @@ export const CategoriesView: React.FC = () => {
               onChange={(e) => setNewCategoryName(e.target.value)}
               style={{
                 padding: '0.5rem 0.7rem',
-                background: 'rgba(255,255,255,0.08)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(0,0,0,0.08)',
+                color: 'var(--text-primary)',
+                border: '1px solid rgba(0,0,0,0.12)',
                 borderRadius: '4px',
                 fontSize: '0.85rem'
               }}
@@ -2760,9 +2445,9 @@ export const CategoriesView: React.FC = () => {
               onChange={(e) => setNewCategoryDesc(e.target.value)}
               style={{
                 padding: '0.5rem 0.7rem',
-                background: 'rgba(255,255,255,0.08)',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(0,0,0,0.08)',
+                color: 'var(--text-primary)',
+                border: '1px solid rgba(0,0,0,0.12)',
                 borderRadius: '4px',
                 fontSize: '0.85rem',
                 minHeight: '70px',
@@ -2793,9 +2478,9 @@ export const CategoriesView: React.FC = () => {
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: 'rgba(255,255,255,0.05)',
+                  background: 'rgba(0,0,0,0.05)',
                   color: 'var(--text-secondary)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(0,0,0,0.1)',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   fontWeight: 600,
@@ -2826,9 +2511,9 @@ export const CategoriesView: React.FC = () => {
                     onChange={(e) => setEditingName(e.target.value)}
                     style={{
                       padding: '0.5rem 0.7rem',
-                      background: 'rgba(255,255,255,0.08)',
-                      color: '#fff',
-                      border: '1px solid rgba(255,255,255,0.12)',
+                      background: 'rgba(0,0,0,0.08)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid rgba(0,0,0,0.12)',
                       borderRadius: '4px',
                       fontSize: '0.85rem'
                     }}
@@ -2838,9 +2523,9 @@ export const CategoriesView: React.FC = () => {
                     onChange={(e) => setEditingDesc(e.target.value)}
                     style={{
                       padding: '0.5rem 0.7rem',
-                      background: 'rgba(255,255,255,0.08)',
-                      color: '#fff',
-                      border: '1px solid rgba(255,255,255,0.12)',
+                      background: 'rgba(0,0,0,0.08)',
+                      color: 'var(--text-primary)',
+                      border: '1px solid rgba(0,0,0,0.12)',
                       borderRadius: '4px',
                       fontSize: '0.85rem',
                       minHeight: '70px'
@@ -2866,9 +2551,9 @@ export const CategoriesView: React.FC = () => {
                       onClick={() => setEditingId(null)}
                       style={{
                         padding: '0.4rem 0.8rem',
-                        background: 'rgba(255,255,255,0.05)',
+                        background: 'rgba(0,0,0,0.05)',
                         color: 'var(--text-secondary)',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(0,0,0,0.1)',
                         borderRadius: '4px',
                         cursor: 'pointer',
                         fontSize: '0.75rem'
@@ -2881,7 +2566,7 @@ export const CategoriesView: React.FC = () => {
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{cat.category_name}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{cat.category_name}</div>
                     {cat.description && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{cat.description}</div>
                     )}
@@ -2895,9 +2580,9 @@ export const CategoriesView: React.FC = () => {
                       }}
                       style={{
                         padding: '0.4rem',
-                        background: 'rgba(255,255,255,0.05)',
+                        background: 'rgba(0,0,0,0.05)',
                         color: 'var(--text-secondary)',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(0,0,0,0.1)',
                         borderRadius: '4px',
                         cursor: 'pointer',
                         display: 'flex',

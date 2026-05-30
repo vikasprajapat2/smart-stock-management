@@ -79,7 +79,7 @@ export const ScannerUpload: React.FC<ScannerUploadProps> = ({
         onDrop={onDrop}
         onClick={() => fileInputRef.current?.click()}
         style={{
-          borderColor: isDragging ? 'var(--accent-neon)' : 'rgba(255, 255, 255, 0.15)',
+          borderColor: isDragging ? 'var(--accent-neon)' : 'rgba(0, 0, 0, 0.15)',
           background: isDragging ? 'rgba(16, 185, 129, 0.05)' : 'rgba(15, 18, 36, 0.3)',
         }}
       >
@@ -94,7 +94,7 @@ export const ScannerUpload: React.FC<ScannerUploadProps> = ({
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <Loader size={48} className="spin" style={{ color: 'var(--accent-neon)' }} />
-            <p style={{ fontWeight: 600, fontSize: '1.1rem', color: '#fff' }}>Decoding Image...</p>
+            <p style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Decoding Image...</p>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               Parsing image pixels for barcodes or QR matrix...
             </p>
@@ -104,7 +104,7 @@ export const ScannerUpload: React.FC<ScannerUploadProps> = ({
             <div className="upload-icon-wrapper">
               <UploadCloud size={32} />
             </div>
-            <p style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '0.5rem', color: '#fff' }}>
+            <p style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
               Drag & Drop Image
             </p>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '320px' }}>

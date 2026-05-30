@@ -92,7 +92,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
           }}>
             <Lock size={28} color="#a78bfa" />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
             {isLogin ? 'Secure Login' : 'Create Account'}
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -205,7 +205,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
               width: '100%',
               padding: '0.85rem',
               background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-neon) 100%)',
-              color: '#fff',
+              color: 'var(--text-primary)',
               border: 'none',
               borderRadius: '8px',
               fontSize: '0.95rem',

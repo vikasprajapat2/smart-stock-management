@@ -1,187 +1,93 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
+from typing import List
+import uuid
 
-from app.database import SessionLocal
-from app.models.order import Order
-from app.models.order_item import OrderItem
+from app.database import get_db
+from app.models.order import SalesOrder
+from app.models.order_item import SalesOrderItem
 from app.models.inventory import Inventory
-from app.models.notification import Notification
-from app.models.product import Product
+from app.models.production_order import ProductionOrder
+from app.models.bom import BOM
+from app.schemas.order_schema import SalesOrderCreate, SalesOrderUpdate, SalesOrderResponse
 
-from app.schemas.order_schema import (
-    OrderCreate,
-    OrderResponse
-)
+router = APIRouter(prefix="/sales-orders", tags=["Sales Orders"])
 
-router = APIRouter(
-    prefix="/orders",
-    tags=["Orders"]
-)
+@router.post("/", response_model=SalesOrderResponse, status_code=status.HTTP_201_CREATED)
+def create_sales_order(order: SalesOrderCreate, db: Session = Depends(get_db)):
+    db_order = SalesOrder(
+        sales_order_number=order.sales_order_number,
+        customer_id=order.customer_id,
+        order_date=order.order_date,
+        expected_delivery_date=order.expected_delivery_date,
+        remarks=order.remarks,
+        status="DRAFT",
+        total_amount=order.total_amount
+    )
+    db.add(db_order)
+    db.commit()
+    db.refresh(db_order)
 
-
-# DATABASE DEPENDENCY
-def get_db():
-
-    db = SessionLocal()
-
-    try:
-        yield db
-
-    finally:
-        db.close()
-
-
-# CREATE ORDER
-@router.post("/", response_model=OrderResponse)
-def create_order(
-    order: OrderCreate,
-    db: Session = Depends(get_db)
-):
-
-    try:
-
-        # CREATE MAIN ORDER
-        new_order = Order(
-            customer_name=order.customer_name,
-            total_amount=order.total_amount,
-            status=order.status
+    for item in order.items:
+        db_item = SalesOrderItem(
+            sales_order_id=db_order.id,
+            product_id=item.product_id,
+            quantity=item.quantity,
+            rate=item.rate,
+            total=item.total
         )
+        db.add(db_item)
+    
+    db.commit()
+    db.refresh(db_order)
+    return db_order
 
-        db.add(new_order)
+@router.get("/", response_model=List[SalesOrderResponse])
+def get_sales_orders(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return db.query(SalesOrder).offset(skip).limit(limit).all()
 
-        db.commit()
-
-        db.refresh(new_order)
-
-        notification = Notification(
-            title="New Sales Order",
-            message=f"Order #{new_order.id} received from {new_order.customer_name} for ${new_order.total_amount}.",
-            type="info"
-        )
-        db.add(notification)
-
-        # PROCESS ORDER ITEMS
-        for item in order.items:
-
-            # CHECK INVENTORY
-            inventory = db.query(Inventory).filter(
-                Inventory.product_id == item.product_id
-            ).first()
-
-            if not inventory:
-
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Inventory not found for product {item.product_id}"
-                )
-
-            # CHECK STOCK
-            if inventory.quantity < item.quantity:
-
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Insufficient stock for product {item.product_id}"
-                )
-
-            # REDUCE STOCK
-            inventory.quantity -= item.quantity
-
-            # CREATE ORDER ITEM
-            order_item = OrderItem(
-                order_id=new_order.id,
-                product_id=item.product_id,
-                quantity=item.quantity,
-                price=item.price
-            )
-
-            db.add(order_item)
-
-            # LOW STOCK CHECK
-            product = db.query(Product).filter(
-                Product.id == inventory.product_id
-            ).first()
-
-            if inventory.quantity <= product.reorder_level:
-
-                notification = Notification(
-                    title="Low Stock Alert",
-                    message=f"{product.product_name} stock is low",
-                    type="warning"
-                )
-
-                db.add(notification)
-
-        db.commit()
-
-        db.refresh(new_order)
-
-        return new_order
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-
-        db.rollback()
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
-
-# GET ALL ORDERS
-@router.get("/")
-def get_orders(
-    db: Session = Depends(get_db)
-):
-
-    orders = db.query(Order).all()
-
-    return orders
-
-
-# GET SINGLE ORDER
-@router.get("/{order_id}")
-def get_single_order(
-    order_id: int,
-    db: Session = Depends(get_db)
-):
-
-    order = db.query(Order).filter(
-        Order.id == order_id
-    ).first()
-
+@router.get("/{order_id}", response_model=SalesOrderResponse)
+def get_sales_order(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(SalesOrder).filter(SalesOrder.id == order_id).first()
     if not order:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Order not found"
-        )
-
+        raise HTTPException(status_code=404, detail="Sales Order not found")
     return order
 
-
-# DELETE ORDER
-@router.delete("/{order_id}")
-def delete_order(
-    order_id: int,
-    db: Session = Depends(get_db)
-):
-
-    order = db.query(Order).filter(
-        Order.id == order_id
-    ).first()
-
+@router.post("/{order_id}/approve", response_model=SalesOrderResponse)
+def approve_sales_order(order_id: int, db: Session = Depends(get_db)):
+    order = db.query(SalesOrder).filter(SalesOrder.id == order_id).first()
     if not order:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Order not found"
-        )
-
-    db.delete(order)
-
+        raise HTTPException(status_code=404, detail="Sales Order not found")
+    
+    if order.status != "DRAFT":
+        raise HTTPException(status_code=400, detail=f"Cannot approve order in {order.status} status")
+    
+    # Stock Check Engine & Auto Production Order Creation
+    for item in order.items:
+        # Check current stock across all warehouses
+        stock = db.query(func.sum(Inventory.quantity)).filter(Inventory.product_id == item.product_id).scalar() or 0
+        
+        if stock < item.quantity:
+            shortage = item.quantity - stock
+            
+            # Check if BOM exists for this product
+            bom = db.query(BOM).filter(BOM.product_id == item.product_id).first()
+            if bom:
+                # Create Production Order
+                po_number = f"PO-AUTO-{str(uuid.uuid4())[:8].upper()}"
+                prod_order = ProductionOrder(
+                    production_order_number=po_number,
+                    product_id=item.product_id,
+                    bom_id=bom.id,
+                    quantity_to_produce=shortage,
+                    status="DRAFT",
+                    priority="HIGH",
+                    sales_order_id=order.id
+                )
+                db.add(prod_order)
+    
+    order.status = "APPROVED"
     db.commit()
-
-    return {"message": "Order deleted successfully"}
+    db.refresh(order)
+    return order

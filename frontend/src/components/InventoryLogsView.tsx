@@ -103,9 +103,9 @@ export const InventoryLogsView: React.FC = () => {
       };
     } else {
       return {
-        background: 'rgba(255, 255, 255, 0.05)',
+        background: 'rgba(0, 0, 0, 0.05)',
         color: 'var(--text-secondary)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        border: '1px solid rgba(0, 0, 0, 0.08)',
         text: act
       };
     }
@@ -269,13 +269,13 @@ export const InventoryLogsView: React.FC = () => {
             filteredLogs.length === 0 ? (
               <div style={{ padding: '5rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <Clock size={48} style={{ margin: '0 auto 1rem', opacity: 0.15 }} />
-                <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: '0.25rem' }}>No Audit Logs Found</h4>
+                <h4 style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: '0.25rem' }}>No Audit Logs Found</h4>
                 <p style={{ fontSize: '0.85rem' }}>Perform scans or stock adjustments to populate records.</p>
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-glass)' }}>
+                  <tr style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-glass)' }}>
                     <th style={{ padding: '1rem' }}>Timestamp</th>
                     <th style={{ padding: '1rem' }}>Activity Type</th>
                     <th style={{ padding: '1rem' }}>Product Details</th>
@@ -292,7 +292,7 @@ export const InventoryLogsView: React.FC = () => {
                     const isPositive = diff >= 0;
 
                     return (
-                      <tr key={log.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <tr key={log.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
                         <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{new Date(log.timestamp).toLocaleString()}</td>
                         <td style={{ padding: '1rem' }}>
                           <span style={{ fontSize: '0.7rem', background: actStyle.background, color: actStyle.color, border: actStyle.border, padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 700 }}>
@@ -300,7 +300,7 @@ export const InventoryLogsView: React.FC = () => {
                           </span>
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          <div style={{ fontWeight: 600, color: '#fff' }}>{pInfo.name}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pInfo.name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{pInfo.sku}</div>
                         </td>
                         <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{getWarehouseName(log.warehouse_id)}</td>
@@ -308,7 +308,7 @@ export const InventoryLogsView: React.FC = () => {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                             <span style={{ color: 'var(--text-muted)' }}>{log.old_quantity}</span>
                             <ArrowRight size={12} style={{ color: 'var(--text-muted)' }} />
-                            <span style={{ fontWeight: 700, color: '#fff' }}>{log.new_quantity}</span>
+                            <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{log.new_quantity}</span>
                           </div>
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 800, color: isPositive ? 'var(--accent-neon)' : '#ef4444' }}>
@@ -324,13 +324,13 @@ export const InventoryLogsView: React.FC = () => {
             filteredMovements.length === 0 ? (
               <div style={{ padding: '5rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <Clock size={48} style={{ margin: '0 auto 1rem', opacity: 0.15 }} />
-                <h4 style={{ color: '#fff', fontWeight: 600, marginBottom: '0.25rem' }}>No Logistics Movements Found</h4>
+                <h4 style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: '0.25rem' }}>No Logistics Movements Found</h4>
                 <p style={{ fontSize: '0.85rem' }}>Transfer stock or perform PO receipts to generate movement ledgers.</p>
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-glass)' }}>
+                  <tr style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-glass)' }}>
                     <th style={{ padding: '1rem' }}>Timestamp</th>
                     <th style={{ padding: '1rem' }}>Type</th>
                     <th style={{ padding: '1rem' }}>Product Details</th>
@@ -361,7 +361,7 @@ export const InventoryLogsView: React.FC = () => {
                     }
 
                     return (
-                      <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <tr key={m.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
                         <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
                           {new Date(m.created_at).toLocaleString()}
                         </td>
@@ -371,7 +371,7 @@ export const InventoryLogsView: React.FC = () => {
                           </span>
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          <div style={{ fontWeight: 600, color: '#fff' }}>{pInfo.name}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pInfo.name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{pInfo.sku}</div>
                         </td>
                         <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>

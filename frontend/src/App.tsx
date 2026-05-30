@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Camera, Image, Clock, ShieldCheck, ShoppingBag,
-  Database, LayoutDashboard, Users, Layers,
+  Database, LayoutDashboard, Users, Layers, ShoppingCart, Truck, FileText,
   CreditCard, Bell, ChevronRight, Cpu, Factory, ClipboardList
 } from 'lucide-react';
 import { ScannerActive } from './components/ScannerActive';
@@ -12,9 +12,13 @@ import { InventoryManager } from './components/InventoryManager';
 import { BOMManager } from './components/BOMManager';
 import {
   DashboardView, WarehouseView, SuppliersView,
-  PurchaseOrdersView, OrdersView, UsersView, CategoriesView
+  PurchaseOrdersView, UsersView, CategoriesView
 } from './components/ERPViews';
 import { InventoryRecordsView } from './components/InventoryRecordsView';
+import SalesOrderManager from './components/SalesOrderManager';
+import CustomerManager from './components/CustomerManager';
+import DispatchManager from './components/DispatchManager';
+import InvoiceManager from './components/InvoiceManager';
 import { ProductionManager } from './components/ProductionManager';
 import { PurchaseRequestsManager } from './components/PurchaseRequestsManager';
 import { InventoryLogsView } from './components/InventoryLogsView';
@@ -23,7 +27,7 @@ import { checkBackendConnection, fetchWarehouses, submitProductScan, fetchNotifi
 import LoginModal from './components/LoginModal';
 import type { Warehouse as BackendWarehouse, Notification as BackendNotification } from './utils/api';
 
-type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'inventoryRecords' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history' | 'boms' | 'bom' | 'productionOrders' | 'purchaseRequests' | 'inventoryLogs';
+type Tab = 'dashboard' | 'webcam' | 'upload' | 'inventory' | 'inventoryRecords' | 'warehouse' | 'procurement' | 'sales' | 'suppliers' | 'users' | 'categories' | 'history' | 'boms' | 'bom' | 'productionOrders' | 'purchaseRequests' | 'inventoryLogs' | 'customers' | 'dispatch' | 'invoices';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -374,11 +378,11 @@ function App() {
         {/* Sidebar Brand Header */}
         <div className="sidebar-brand" style={{ gap: '0.65rem' }}>
           <div className="brand-icon-wrapper" style={{ background: 'transparent', border: 'none', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src="/logo.jpg" alt="Keya Fusion Logo" style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'contain', background: '#fff', padding: '1px', border: '1px solid rgba(255,255,255,0.1)' }} />
+            <img src="/logo.jpg" alt="Keya Fusion Logo" style={{ width: '38px', height: '38px', borderRadius: '8px', objectFit: 'contain', background: 'var(--text-primary)', padding: '1px', border: '1px solid rgba(0,0,0,0.1)' }} />
           </div>
           {!sidebarCollapsed && (
             <div className="brand-meta">
-              <h2 className="brand-name" style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', letterSpacing: '0.02em', background: 'linear-gradient(135deg, #f97316 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Keya Fusion</h2>
+              <h2 className="brand-name" style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '0.02em', background: 'linear-gradient(135deg, #f97316 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Keya Fusion</h2>
               <span className="brand-badge" style={{ background: 'rgba(249, 115, 22, 0.12)', color: '#f97316', border: '1px solid rgba(249, 115, 22, 0.25)', fontSize: '0.55rem', padding: '0.05rem 0.35rem' }}>TECHNOLOGY</span>
             </div>
           )}
@@ -387,7 +391,7 @@ function App() {
         {/* Navigation Sidebar List */}
         <nav className="sidebar-nav-list">
 
-          <div className="nav-section-title">{!sidebarCollapsed && 'Core Dashboard'}</div>
+          <div className="nav-section-title">{!sidebarCollapsed && 'CORE DASHBOARD'}</div>
 
           <button
             className={`sidebar-nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
@@ -397,25 +401,45 @@ function App() {
             {!sidebarCollapsed && <span>ERP Summary</span>}
           </button>
 
-          <div className="nav-section-title">{!sidebarCollapsed && 'Real-time Scanner'}</div>
+          <div className="nav-section-title">{!sidebarCollapsed && 'MASTER DATA'}</div>
 
-          <button
-            className={`sidebar-nav-btn ${activeTab === 'webcam' ? 'active' : ''}`}
-            onClick={() => handleTabChange('webcam')}
-          >
-            <Camera size={18} />
-            {!sidebarCollapsed && <span>Webcam Scanner</span>}
-          </button>
+          {isBackendConnected && (
+            <>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'customers' ? 'active' : ''}`}
+                onClick={() => handleTabChange('customers')}
+              >
+                <Users size={18} />
+                {!sidebarCollapsed && <span>Customers</span>}
+              </button>
+              
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'suppliers' ? 'active' : ''}`}
+                onClick={() => handleTabChange('suppliers')}
+              >
+                <Users size={18} />
+                {!sidebarCollapsed && <span>Suppliers</span>}
+              </button>
 
-          <button
-            className={`sidebar-nav-btn ${activeTab === 'upload' ? 'active' : ''}`}
-            onClick={() => handleTabChange('upload')}
-          >
-            <Image size={18} />
-            {!sidebarCollapsed && <span>Upload image</span>}
-          </button>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'warehouse' ? 'active' : ''}`}
+                onClick={() => handleTabChange('warehouse')}
+              >
+                <Database size={18} />
+                {!sidebarCollapsed && <span>Warehouses</span>}
+              </button>
 
-          <div className="nav-section-title">{!sidebarCollapsed && 'Logistics & Warehouse'}</div>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'categories' ? 'active' : ''}`}
+                onClick={() => handleTabChange('categories')}
+              >
+                <Layers size={18} />
+                {!sidebarCollapsed && <span>Categories</span>}
+              </button>
+            </>
+          )}
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'INVENTORY LOGISTICS'}</div>
 
           {isBackendConnected && (
             <>
@@ -432,7 +456,7 @@ function App() {
                 onClick={() => handleTabChange('inventoryRecords')}
               >
                 <Database size={18} />
-                {!sidebarCollapsed && <span>Direct Inventory</span>}
+                {!sidebarCollapsed && <span>Inventory Status</span>}
               </button>
 
               <button
@@ -440,67 +464,36 @@ function App() {
                 onClick={() => handleTabChange('inventoryLogs')}
               >
                 <Clock size={18} style={{ color: 'var(--accent-purple)' }} />
-                {!sidebarCollapsed && <span>Activity Logs</span>}
+                {!sidebarCollapsed && <span>Movement Logs</span>}
               </button>
+            </>
+          )}
 
+          <div className="nav-section-title">{!sidebarCollapsed && 'PROCUREMENT (PO)'}</div>
+
+          {isBackendConnected && (
+            <>
               <button
-                className={`sidebar-nav-btn ${activeTab === 'warehouse' ? 'active' : ''}`}
-                onClick={() => handleTabChange('warehouse')}
+                className={`sidebar-nav-btn ${activeTab === 'purchaseRequests' ? 'active' : ''}`}
+                onClick={() => handleTabChange('purchaseRequests')}
               >
-                <Database size={18} />
-                {!sidebarCollapsed && <span>Logistics Map</span>}
+                <ClipboardList size={18} />
+                {!sidebarCollapsed && <span>Purchase Requests</span>}
               </button>
-
               <button
                 className={`sidebar-nav-btn ${activeTab === 'procurement' ? 'active' : ''}`}
                 onClick={() => handleTabChange('procurement')}
               >
                 <Layers size={18} />
-                {!sidebarCollapsed && <span>Procurement (PO)</span>}
+                {!sidebarCollapsed && <span>Purchase Orders</span>}
               </button>
+            </>
+          )}
 
-              <button
-                className={`sidebar-nav-btn ${activeTab === 'sales' ? 'active' : ''}`}
-                onClick={() => handleTabChange('sales')}
-              >
-                <CreditCard size={18} />
-                {!sidebarCollapsed && <span>Sales billing</span>}
-              </button>
+          <div className="nav-section-title">{!sidebarCollapsed && 'MANUFACTURING (MRP)'}</div>
 
-              <button
-                className={`sidebar-nav-btn ${activeTab === 'suppliers' ? 'active' : ''}`}
-                onClick={() => handleTabChange('suppliers')}
-              >
-                <Users size={18} />
-                {!sidebarCollapsed && <span>Suppliers Directory</span>}
-              </button>
-
-              <button
-                className={`sidebar-nav-btn ${activeTab === 'users' ? 'active' : ''}`}
-                onClick={() => handleTabChange('users')}
-              >
-                <Users size={18} />
-                {!sidebarCollapsed && <span>Team Management</span>}
-              </button>
-
-              <button
-                className={`sidebar-nav-btn ${activeTab === 'categories' ? 'active' : ''}`}
-                onClick={() => handleTabChange('categories')}
-              >
-                <Layers size={18} />
-                {!sidebarCollapsed && <span>Categories Setup</span>}
-              </button>
-
-              <button
-                className={`sidebar-nav-btn ${activeTab === 'bom' ? 'active' : ''}`}
-                onClick={() => handleTabChange('bom')}
-              >
-                <Layers size={18} />
-                {!sidebarCollapsed && <span>BOM & Assembly</span>}
-              </button>
-
-              <div className="nav-section-title">{!sidebarCollapsed && 'Manufacturing & MRP'}</div>
-
+          {isBackendConnected && (
+            <>
               <button
                 className={`sidebar-nav-btn ${activeTab === 'boms' ? 'active' : ''}`}
                 onClick={() => handleTabChange('boms')}
@@ -510,24 +503,70 @@ function App() {
               </button>
 
               <button
+                className={`sidebar-nav-btn ${activeTab === 'bom' ? 'active' : ''}`}
+                onClick={() => handleTabChange('bom')}
+              >
+                <Layers size={18} />
+                {!sidebarCollapsed && <span>Assembly Plans</span>}
+              </button>
+
+              <button
                 className={`sidebar-nav-btn ${activeTab === 'productionOrders' ? 'active' : ''}`}
                 onClick={() => handleTabChange('productionOrders')}
               >
                 <Factory size={18} />
                 {!sidebarCollapsed && <span>Work Orders</span>}
               </button>
+            </>
+          )}
+
+          <div className="nav-section-title">{!sidebarCollapsed && 'SALES & DISPATCH'}</div>
+
+          {isBackendConnected && (
+            <>
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'sales' ? 'active' : ''}`}
+                onClick={() => handleTabChange('sales')}
+              >
+                <ShoppingCart size={18} />
+                {!sidebarCollapsed && <span>Sales Orders</span>}
+              </button>
 
               <button
-                className={`sidebar-nav-btn ${activeTab === 'purchaseRequests' ? 'active' : ''}`}
-                onClick={() => handleTabChange('purchaseRequests')}
+                className={`sidebar-nav-btn ${activeTab === 'dispatch' ? 'active' : ''}`}
+                onClick={() => handleTabChange('dispatch')}
               >
-                <ClipboardList size={18} />
-                {!sidebarCollapsed && <span>Purchase Requests</span>}
+                <Truck size={18} />
+                {!sidebarCollapsed && <span>Dispatch & Shipping</span>}
+              </button>
+
+              <button
+                className={`sidebar-nav-btn ${activeTab === 'invoices' ? 'active' : ''}`}
+                onClick={() => handleTabChange('invoices')}
+              >
+                <FileText size={18} />
+                {!sidebarCollapsed && <span>Invoices</span>}
               </button>
             </>
           )}
 
-          <div className="nav-section-title">{!sidebarCollapsed && 'Setup & Utilities'}</div>
+          <div className="nav-section-title">{!sidebarCollapsed && 'TOOLS & ADMIN'}</div>
+
+          <button
+            className={`sidebar-nav-btn ${activeTab === 'webcam' ? 'active' : ''}`}
+            onClick={() => handleTabChange('webcam')}
+          >
+            <Camera size={18} />
+            {!sidebarCollapsed && <span>Webcam Scanner</span>}
+          </button>
+
+          <button
+            className={`sidebar-nav-btn ${activeTab === 'upload' ? 'active' : ''}`}
+            onClick={() => handleTabChange('upload')}
+          >
+            <Image size={18} />
+            {!sidebarCollapsed && <span>Upload Image</span>}
+          </button>
 
           <button
             className={`sidebar-nav-btn ${activeTab === 'history' ? 'active' : ''}`}
@@ -536,9 +575,20 @@ function App() {
             <Clock size={18} />
             {!sidebarCollapsed && <span>Scan History</span>}
           </button>
+
+          {isBackendConnected && (
+            <button
+              className={`sidebar-nav-btn ${activeTab === 'users' ? 'active' : ''}`}
+              onClick={() => handleTabChange('users')}
+            >
+              <Users size={18} />
+              {!sidebarCollapsed && <span>Team Management</span>}
+            </button>
+          )}
           
           <button
             className="sidebar-nav-btn"
+            style={{ marginTop: 'auto', borderTop: '1px solid var(--border-glass)' }}
             onClick={() => {
               localStorage.removeItem('access_token');
               setIsAuthenticated(false);
@@ -585,7 +635,7 @@ function App() {
             </button>
             <span style={{ fontSize: '1.2rem' }}>📦</span>
             <div style={{ textTransform: 'capitalize' }}>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {activeTab === 'webcam' ? 'Live Camera Decoder' : activeTab === 'inventory' ? 'Products & Stock Management' : activeTab === 'inventoryRecords' ? 'Direct Inventory Records' : activeTab === 'procurement' ? 'Procurement purchase invoices' : activeTab === 'dashboard' ? 'ERP Dashboard Summary' : activeTab === 'boms' ? 'BOM Recipes & Cost rollup' : activeTab === 'bom' ? 'BOM & Production Runs' : activeTab === 'productionOrders' ? 'Manufacturing Work Orders' : activeTab === 'purchaseRequests' ? 'Automated Procurement Requests' : activeTab + ' hub'}
               </h3>
               <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Enterprise stock logistical portal</p>
@@ -618,16 +668,15 @@ function App() {
                     top: '120%',
                     right: 0,
                     width: '320px',
-                    background: 'rgba(20, 20, 30, 0.95)',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    background: '#ffffff',
+                    border: '1px solid var(--border-glass)',
                     borderRadius: '12px',
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
                     zIndex: 1000,
-                    backdropFilter: 'blur(10px)',
                     overflow: 'hidden'
                   }}>
-                    <div style={{ padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#fff' }}>Notifications</h4>
+                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Notifications</h4>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{unreadCount} unread</span>
                     </div>
                     <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
@@ -640,8 +689,8 @@ function App() {
                             onClick={() => !n.is_read && handleMarkNotificationRead(n.id)}
                             style={{ 
                               padding: '1rem', 
-                              borderBottom: '1px solid rgba(255,255,255,0.03)',
-                              background: n.is_read ? 'transparent' : 'rgba(139, 92, 246, 0.05)',
+                              borderBottom: '1px solid rgba(0,0,0,0.03)',
+                              background: n.is_read ? 'transparent' : '#f0f9ff',
                               cursor: n.is_read ? 'default' : 'pointer',
                               display: 'flex',
                               flexDirection: 'column',
@@ -649,15 +698,15 @@ function App() {
                               opacity: n.is_read ? 0.7 : 1,
                               transition: 'background 0.2s'
                             }}
-                            onMouseEnter={(e) => { if (!n.is_read) e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)'; }}
-                            onMouseLeave={(e) => { if (!n.is_read) e.currentTarget.style.background = 'rgba(139, 92, 246, 0.05)'; }}
+                            onMouseEnter={(e) => { if (!n.is_read) e.currentTarget.style.background = '#e0f2fe'; }}
+                            onMouseLeave={(e) => { if (!n.is_read) e.currentTarget.style.background = '#f0f9ff'; }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                               <strong style={{ fontSize: '0.85rem', color: n.type === 'error' ? '#ef4444' : n.type === 'warning' ? '#f59e0b' : n.type === 'success' ? '#22c55e' : '#3b82f6' }}>{n.title}</strong>
                               {!n.is_read && <div style={{ width: '8px', height: '8px', background: 'var(--accent-primary)', borderRadius: '50%', flexShrink: 0 }}></div>}
                             </div>
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>{n.message}</span>
-                            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.25rem' }}>{new Date(n.created_at).toLocaleString()}</span>
+                            <span style={{ fontSize: '0.65rem', color: 'rgba(0,0,0,0.3)', marginTop: '0.25rem' }}>{new Date(n.created_at).toLocaleString()}</span>
                           </div>
                         ))
                       )}
@@ -667,8 +716,8 @@ function App() {
               </div>
             )}
 
-            <div style={{ width: '1px', height: '24px', background: 'rgba(255,255,255,0.08)' }}></div>
-            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#fff' }}>{userRole} User</p>
+            <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.08)' }}></div>
+            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{userRole} User</p>
 
           </div>
 
@@ -694,7 +743,25 @@ function App() {
           )}
 
           {activeTab === 'sales' && isBackendConnected && (
-            <OrdersView />
+            <SalesOrderManager />
+          )}
+
+          {activeTab === 'customers' && isBackendConnected && (
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <CustomerManager />
+            </div>
+          )}
+
+          {activeTab === 'dispatch' && isBackendConnected && (
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <DispatchManager />
+            </div>
+          )}
+
+          {activeTab === 'invoices' && isBackendConnected && (
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <InvoiceManager />
+            </div>
           )}
 
           {activeTab === 'users' && isBackendConnected && (
@@ -750,7 +817,7 @@ function App() {
 
               {/* Left column scanner panels */}
               <section className="glass-panel" style={{ padding: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#fff', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {activeTab === 'webcam' && (
                     <>
                       <Camera size={18} style={{ color: 'var(--accent-neon)' }} />
@@ -981,21 +1048,20 @@ function App() {
         .erp-layout-container {
           display: flex;
           min-height: 100vh;
-          background: #080a14;
+          background: var(--bg-dark);
           color: var(--text-primary);
-          font-family: 'Outfit', sans-serif;
+          font-family: 'Inter', sans-serif;
         }
 
         /* ─── SIDEBAR STYLES ───────────────────────────────── */
         .erp-sidebar {
           width: 250px;
-          background: rgba(13, 17, 30, 0.85);
-          border-right: 1px solid rgba(255, 255, 255, 0.04);
+          background: #ffffff;
+          border-right: 1px solid var(--border-glass);
           display: flex;
           flex-direction: column;
           padding: 1.5rem 1rem;
           transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          backdrop-filter: blur(14px);
           z-index: 10;
         }
         
@@ -1030,7 +1096,7 @@ function App() {
         .brand-name {
           font-size: 0.95rem;
           font-weight: 800;
-          color: #fff;
+          color: var(--text-primary);
           letter-spacing: 0.03em;
         }
 
@@ -1048,6 +1114,22 @@ function App() {
           flex-direction: column;
           gap: 0.15rem;
           flex: 1;
+          overflow-y: auto;
+          overflow-x: hidden;
+          padding-right: 4px;
+        }
+
+        .sidebar-nav-list::-webkit-scrollbar {
+          width: 4px;
+        }
+        
+        .sidebar-nav-list::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .sidebar-nav-list::-webkit-scrollbar-thumb {
+          background-color: var(--border-glass);
+          border-radius: 4px;
         }
 
         .nav-section-title {
@@ -1080,14 +1162,14 @@ function App() {
         }
 
         .sidebar-nav-btn:hover {
-          background: rgba(255, 255, 255, 0.02);
-          color: #fff;
+          background: #f8fafc;
+          color: var(--text-primary);
         }
 
         .sidebar-nav-btn.active {
-          background: rgba(6, 182, 212, 0.06);
-          color: var(--accent-cyan);
-          border-color: rgba(6, 182, 212, 0.15);
+          background: #eff6ff;
+          color: var(--accent-neon);
+          border-color: transparent;
           font-weight: 600;
         }
 
@@ -1096,15 +1178,15 @@ function App() {
           display: flex;
           justify-content: center;
           padding-top: 1rem;
-          border-top: 1px solid rgba(255, 255, 255, 0.03);
+          border-top: 1px solid rgba(0, 0, 0, 0.03);
         }
 
         .collapse-toggle-btn {
           width: 32px;
           height: 32px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.02);
-          border: 1px solid rgba(255,255,255,0.05);
+          background: #f1f5f9;
+          border: 1px solid #cbd5e1;
           color: var(--text-secondary);
           display: flex;
           align-items: center;
@@ -1114,8 +1196,8 @@ function App() {
         }
         
         .collapse-toggle-btn:hover {
-          background: rgba(255,255,255,0.05);
-          color: #fff;
+          background: #e2e8f0;
+          color: var(--text-primary);
         }
 
         /* ─── TOP HEADER NAVBAR STYLES ───────────────────────── */
@@ -1127,9 +1209,8 @@ function App() {
 
         .erp-topbar {
           height: 70px;
-          background: rgba(13, 17, 30, 0.5);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-          backdrop-filter: blur(10px);
+          background: #ffffff;
+          border-bottom: 1px solid var(--border-glass);
           display: flex;
           align-items: center;
           padding: 0 2rem;
@@ -1203,7 +1284,7 @@ function App() {
         .erp-footer {
           padding: 1rem 2rem;
           background: rgba(13, 17, 30, 0.4);
-          border-top: 1px solid rgba(255, 255, 255, 0.02);
+          border-top: 1px solid rgba(0, 0, 0, 0.02);
           text-align: center;
           font-size: 0.75rem;
           color: var(--text-muted);

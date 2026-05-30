@@ -271,8 +271,8 @@ export const ProductionManager: React.FC = () => {
 
       {/* Creation Form Wizard */}
       {showAddForm && (
-        <form onSubmit={handleCreateOrder} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <form onSubmit={handleCreateOrder} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0, 0, 0, 0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Factory size={18} style={{ color: 'var(--accent-cyan)' }} />
             Plan New Manufacturing Work Order
           </h3>
@@ -327,13 +327,13 @@ export const ProductionManager: React.FC = () => {
         ) : filteredOrders.length === 0 ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
             <Factory size={48} style={{ margin: '0 auto 1rem', opacity: 0.15 }} />
-            <h4 style={{ color: '#fff', fontWeight: 600 }}>No Work Orders Active</h4>
+            <h4 style={{ color: 'var(--text-primary)', fontWeight: 600 }}>No Work Orders Active</h4>
             <p style={{ fontSize: '0.85rem' }}>Create manufacturing orders to trigger raw materials routing.</p>
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
             <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-glass)' }}>
+              <tr style={{ background: 'rgba(0,0,0,0.03)', borderBottom: '1px solid var(--border-glass)' }}>
                 <th style={{ padding: '1rem' }}>Work Order</th>
                 <th style={{ padding: '1rem' }}>Target Item</th>
                 <th style={{ padding: '1rem' }}>BOM Recipe</th>
@@ -349,7 +349,7 @@ export const ProductionManager: React.FC = () => {
                 const status = order.status;
 
                 // Status theme
-                let badgeStyle = { background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' };
+                let badgeStyle = { background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(0,0,0,0.1)' };
                 if (status === 'DRAFT') {
                   badgeStyle = { background: 'rgba(245, 158, 11, 0.08)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.2)' };
                 } else if (status === 'APPROVED') {
@@ -363,14 +363,14 @@ export const ProductionManager: React.FC = () => {
                 }
 
                 return (
-                  <tr key={order.id} className="table-row-hover" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={order.id} className="table-row-hover" style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: 700, color: '#fff' }}>{order.production_order_number}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{order.production_order_number}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Planned: {new Date(order.created_at).toLocaleDateString()}</div>
                     </td>
 
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: 600, color: '#fff' }}>{targetProd ? targetProd.product_name : `Product ID: ${order.product_id}`}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{targetProd ? targetProd.product_name : `Product ID: ${order.product_id}`}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{targetProd?.sku}</div>
                     </td>
 
@@ -378,7 +378,7 @@ export const ProductionManager: React.FC = () => {
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{activeBom ? activeBom.bom_number : `BOM ID: ${order.bom_id}`}</span>
                     </td>
 
-                    <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 600, color: '#fff' }}>
+                    <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-primary)' }}>
                       {order.quantity_to_produce} {targetProd?.unit || 'pcs'}
                     </td>
 
@@ -478,7 +478,7 @@ export const ProductionManager: React.FC = () => {
             width: '100%',
             maxWidth: '650px',
             background: 'rgba(20, 20, 30, 0.95)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(0,0,0,0.08)',
             borderRadius: '16px',
             padding: '1.5rem',
             display: 'flex',
@@ -486,10 +486,10 @@ export const ProductionManager: React.FC = () => {
             gap: '1.25rem',
             boxShadow: '0 20px 50px rgba(0,0,0,0.6)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.08)', paddingBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Eye size={18} style={{ color: 'var(--accent-cyan)' }} />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', margin: 0 }}>MRP Material Stock Checker</h3>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>MRP Material Stock Checker</h3>
               </div>
               <button 
                 onClick={() => { setShowAvailabilityModal(false); setAvailabilityData(null); }}
@@ -523,7 +523,7 @@ export const ProductionManager: React.FC = () => {
                     <AlertTriangle size={24} style={{ color: '#ef4444' }} />
                   )}
                   <div>
-                    <h4 style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>
+                    <h4 style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
                       {availabilityData.is_fully_available ? 'All Materials In Stock!' : 'Raw Materials Shortage Detected'}
                     </h4>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
@@ -534,7 +534,7 @@ export const ProductionManager: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ fontWeight: 600, color: '#fff', fontSize: '0.85rem' }}>Raw Components Breakdown</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>Raw Components Breakdown</div>
                 
                 {/* Manifest list */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '250px', overflowY: 'auto', paddingRight: '0.25rem' }}>
@@ -544,8 +544,8 @@ export const ProductionManager: React.FC = () => {
 
                     return (
                       <div key={item.material_product_id} style={{ 
-                        background: 'rgba(255,255,255,0.01)', 
-                        border: '1px solid rgba(255,255,255,0.04)',
+                        background: 'rgba(0,0,0,0.01)', 
+                        border: '1px solid rgba(0,0,0,0.04)',
                         padding: '0.75rem',
                         borderRadius: '8px',
                         display: 'flex',
@@ -554,7 +554,7 @@ export const ProductionManager: React.FC = () => {
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                           <div>
-                            <span style={{ fontWeight: 600, color: '#fff' }}>{item.material_name}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.material_name}</span>
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginLeft: '0.5rem' }}>({item.sku})</span>
                           </div>
                           
@@ -571,7 +571,7 @@ export const ProductionManager: React.FC = () => {
                         </div>
 
                         {/* Progress Bar visual stock ratio */}
-                        <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ width: '100%', height: '6px', background: 'rgba(0,0,0,0.05)', borderRadius: '3px', overflow: 'hidden', position: 'relative' }}>
                           <div style={{ 
                             width: `${pct}%`, 
                             height: '100%', 
@@ -591,7 +591,7 @@ export const ProductionManager: React.FC = () => {
                 </div>
 
                 {/* Direct Action triggers */}
-                <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '1rem', marginTop: '0.5rem' }}>
                   <button 
                     onClick={() => { setShowAvailabilityModal(false); setAvailabilityData(null); }}
                     className="scan-action-btn btn-secondary"

@@ -194,13 +194,13 @@ export const PurchaseRequestsManager: React.FC = () => {
         ) : filteredRequests.length === 0 ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
             <Bell size={48} style={{ margin: '0 auto 1rem', opacity: 0.15 }} />
-            <h4 style={{ color: '#fff', fontWeight: 600 }}>No Purchase Requests Pending</h4>
+            <h4 style={{ color: 'var(--text-primary)', fontWeight: 600 }}>No Purchase Requests Pending</h4>
             <p style={{ fontSize: '0.85rem' }}>Automated reorder alerts populate when product inventory drops below safety limits.</p>
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
             <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-glass)' }}>
+              <tr style={{ background: 'rgba(0,0,0,0.03)', borderBottom: '1px solid var(--border-glass)' }}>
                 <th style={{ padding: '1rem' }}>ID & Alert Date</th>
                 <th style={{ padding: '1rem' }}>Component / Raw Material</th>
                 <th style={{ padding: '1rem', textAlign: 'center' }}>Safety Level</th>
@@ -216,14 +216,14 @@ export const PurchaseRequestsManager: React.FC = () => {
                 const isOrdered = req.status === 'PO_CREATED';
 
                 return (
-                  <tr key={req.id} className="table-row-hover" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={req.id} className="table-row-hover" style={{ borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: 700, color: '#fff' }}>#PR-{req.id}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>#PR-{req.id}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{new Date(req.created_at).toLocaleDateString()}</div>
                     </td>
 
                     <td style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: 600, color: '#fff' }}>{req.product?.product_name || `Product ID: ${req.product_id}`}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{req.product?.product_name || `Product ID: ${req.product_id}`}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{req.product?.sku}</div>
                     </td>
 
@@ -247,9 +247,9 @@ export const PurchaseRequestsManager: React.FC = () => {
                         fontWeight: 700,
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
-                        background: isPending ? 'rgba(239, 68, 68, 0.1)' : isOrdered ? 'rgba(34, 197, 94, 0.1)' : 'rgba(255,255,255,0.05)',
+                        background: isPending ? 'rgba(239, 68, 68, 0.1)' : isOrdered ? 'rgba(34, 197, 94, 0.1)' : 'rgba(0,0,0,0.05)',
                         color: isPending ? '#f87171' : isOrdered ? 'var(--accent-neon)' : 'var(--text-muted)',
-                        border: isPending ? '1px solid rgba(239, 68, 68, 0.2)' : isOrdered ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(255,255,255,0.1)'
+                        border: isPending ? '1px solid rgba(239, 68, 68, 0.2)' : isOrdered ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(0,0,0,0.1)'
                       }}>
                         {req.status === 'PENDING' ? 'Low Stock Alert' : req.status === 'PO_CREATED' ? 'PO Compiled' : req.status}
                       </span>
@@ -298,7 +298,7 @@ export const PurchaseRequestsManager: React.FC = () => {
             width: '100%',
             maxWidth: '550px',
             background: 'rgba(20, 20, 30, 0.95)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(0,0,0,0.08)',
             borderRadius: '16px',
             padding: '1.5rem',
             display: 'flex',
@@ -306,10 +306,10 @@ export const PurchaseRequestsManager: React.FC = () => {
             gap: '1.25rem',
             boxShadow: '0 20px 50px rgba(0,0,0,0.6)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.08)', paddingBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <ShoppingBag size={18} style={{ color: 'var(--accent-purple)' }} />
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', margin: 0 }}>Fulfill Procurement Reorder Alert</h3>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Fulfill Procurement Reorder Alert</h3>
               </div>
               <button 
                 onClick={() => { setShowCompileModal(false); setSelectedRequest(null); setCompiledPO(null); }}
@@ -323,7 +323,7 @@ export const PurchaseRequestsManager: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0', alignItems: 'center', textAlign: 'center' }}>
                 <CheckCircle size={48} style={{ color: 'var(--accent-neon)' }} />
                 <div>
-                  <h4 style={{ color: '#fff', fontWeight: 700 }}>Fulfillment Purchase Invoice Compiled!</h4>
+                  <h4 style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Fulfillment Purchase Invoice Compiled!</h4>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
                     Purchase Order <strong>{compiledPO.po_number}</strong> was created successfully.
                   </p>
@@ -346,12 +346,12 @@ export const PurchaseRequestsManager: React.FC = () => {
               <form onSubmit={handleCompilePO} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
                 {/* Product Summary */}
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
+                <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', border: '1px solid rgba(0,0,0,0.04)', borderRadius: '10px' }}>
                   <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Item Needing Reorder</div>
-                  <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', marginTop: '0.25rem' }}>{selectedRequest.product?.product_name}</div>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.95rem', marginTop: '0.25rem' }}>{selectedRequest.product?.product_name}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>SKU: {selectedRequest.product?.sku}</div>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.75rem', borderTop: '1px dashed rgba(255,255,255,0.06)', paddingTop: '0.5rem', fontSize: '0.8rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.75rem', borderTop: '1px dashed rgba(0,0,0,0.06)', paddingTop: '0.5rem', fontSize: '0.8rem' }}>
                     <div>
                       <span style={{ color: 'var(--text-muted)' }}>Warehouse Stock: </span>
                       <strong style={{ color: '#f87171' }}>{selectedRequest.product?.stock_quantity ?? 0} {selectedRequest.product?.unit}</strong>
@@ -404,7 +404,7 @@ export const PurchaseRequestsManager: React.FC = () => {
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>Choose which storage warehouse should receive these components.</span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '1rem', marginTop: '0.5rem' }}>
                   <button 
                     type="button" 
                     onClick={() => { setShowCompileModal(false); setSelectedRequest(null); }}

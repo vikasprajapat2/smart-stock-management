@@ -19,6 +19,15 @@ from app.models.product import Product
 from app.models.category import Category
 from app.models.inventory import Inventory
 from app.models.warehouse import Warehouse
+from app.models.inventory_log import InventoryLog
+from app.models.stock_movement import StockMovement
+from app.models.purchase_order import PurchaseOrderItem
+from app.models.purchase_request import PurchaseRequest
+from app.models.production_order import ProductionOrder
+from app.models.material_reservation import MaterialReservation
+from app.models.grn_item import GRNItem
+from app.models.bom_item import BOMItem
+from app.models.order_item import SalesOrderItem
 from app.schemas.product_schema import (
     ProductCreate,
     ProductUpdate,
@@ -204,7 +213,7 @@ def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get
     for key, value in update_data.items():
         setattr(product, key, value)
 
-    db.commit()
+    db.commit()    
     db.refresh(product)
     product.stock_quantity = get_product_stock(db, product.id)
     return product
@@ -212,6 +221,7 @@ def update_product(id: int, product_in: ProductUpdate, db: Session = Depends(get
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(
     id: int, 
+    force: bool = False,
     db: Session = Depends(get_db),
     current_user = Depends(require_staff)
 ):
@@ -222,7 +232,100 @@ def delete_product(
             detail=f"Product with id {id} not found."
         )
     
-    # Clean up associated inventory entries first
+    if force:
+        # Force delete: cascade-remove all referencing records
+        db.query(BOMItem).filter(BOMItem.material_product_id == id).delete(synchronize_session=False)
+        db.query(GRNItem).filter(GRNItem.product_id == id).delete(synchronize_session=False)
+        db.query(SalesOrderItem).filter(SalesOrderItem.product_id == id).delete(synchronize_session=False)
+        db.query(PurchaseOrderItem).filter(PurchaseOrderItem.product_id == id).delete(synchronize_session=False)
+        db.query(StockMovement).filter(StockMovement.product_id == id).delete(synchronize_session=False)
+        db.query(InventoryLog).filter(InventoryLog.product_id == id).delete(synchronize_session=False)
+
+        # Delete production orders and their related reservations/purchase requests
+        prod_orders = db.query(ProductionOrder).filter(ProductionOrder.product_id == id).all()
+        for po in prod_orders:
+            db.query(MaterialReservation).filter(MaterialReservation.production_order_id == po.id).delete(synchronize_session=False)
+            db.query(PurchaseRequest).filter(PurchaseRequest.production_order_id == po.id).delete(synchronize_session=False)
+            db.delete(po)
+
+        # Delete remaining purchase requests and material reservations linked directly to product
+        db.query(PurchaseRequest).filter(PurchaseRequest.product_id == id).delete(synchronize_session=False)
+        db.query(MaterialReservation).filter(MaterialReservation.product_id == id).delete(synchronize_session=False)
+
+        db.query(Inventory).filter(Inventory.product_id == id).delete(synchronize_session=False)
+        db.delete(product)
+        db.commit()
+        return None
+
+    # --- Standard (non-force) deletion with safety checks ---
+
+    # 1. Check if there is active stock in warehouses
+    active_inventory = db.query(Inventory).filter(
+        Inventory.product_id == id,
+        (Inventory.quantity > 0) | (Inventory.quantity_reserved > 0)
+    ).first()
+    if active_inventory:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with active stock in warehouse."
+        )
+
+    # 2. Check for historical transaction references to prevent database FK violations
+    if db.query(InventoryLog).filter(InventoryLog.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated inventory logs."
+        )
+        
+    if db.query(StockMovement).filter(StockMovement.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated stock movements."
+        )
+
+    if db.query(PurchaseOrderItem).filter(PurchaseOrderItem.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated purchase orders."
+        )
+
+    if db.query(PurchaseRequest).filter(PurchaseRequest.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated purchase requests."
+        )
+
+    if db.query(ProductionOrder).filter(ProductionOrder.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated production orders."
+        )
+
+    if db.query(MaterialReservation).filter(MaterialReservation.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated material reservations."
+        )
+
+    if db.query(GRNItem).filter(GRNItem.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated Goods Receipt Notes (GRN)."
+        )
+
+    if db.query(BOMItem).filter(BOMItem.material_product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product because it is used as a raw material in a Bill of Materials (BOM)."
+        )
+
+    if db.query(SalesOrderItem).filter(SalesOrderItem.product_id == id).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product with associated sales order items."
+        )
+    
+    # Clean up associated empty inventory entries first
     db.query(Inventory).filter(Inventory.product_id == id).delete(synchronize_session=False)
     db.delete(product)
     db.commit()

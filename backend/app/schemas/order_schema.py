@@ -1,28 +1,45 @@
 from pydantic import BaseModel
-from typing import List
-from datetime import datetime 
+from typing import List, Optional
+from datetime import datetime, date
 
-class OrderItemCreate(BaseModel):
+class SalesOrderItemBase(BaseModel):
     product_id: int
     quantity: int
-    price: float
+    rate: float
+    total: float
 
-class OrderCreate(BaseModel):
-    customer_name: str
-    total_amount: float
-    status: str
-    items: List[OrderItemCreate]
+class SalesOrderItemCreate(SalesOrderItemBase):
+    pass
 
-class OrderResponse(BaseModel):
+class SalesOrderItemResponse(SalesOrderItemBase):
     id: int
+    sales_order_id: int
 
-    customer_name: str
+    class Config:
+        from_attributes = True
 
-    total_amount: float
+class SalesOrderBase(BaseModel):
+    sales_order_number: str
+    customer_id: int
+    order_date: Optional[date] = None
+    expected_delivery_date: Optional[date] = None
+    remarks: Optional[str] = None
+    status: Optional[str] = "DRAFT"
+    total_amount: float = 0.0
 
-    status: str
+class SalesOrderCreate(SalesOrderBase):
+    items: List[SalesOrderItemCreate]
 
+class SalesOrderUpdate(BaseModel):
+    expected_delivery_date: Optional[date] = None
+    remarks: Optional[str] = None
+    status: Optional[str] = None
+
+class SalesOrderResponse(SalesOrderBase):
+    id: int
     created_at: datetime
+    updated_at: datetime
+    items: List[SalesOrderItemResponse] = []
 
     class Config:
         from_attributes = True

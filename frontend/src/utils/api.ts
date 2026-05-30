@@ -178,35 +178,121 @@ export interface PurchaseOrderResponse {
   items: PurchaseOrderItemResponse[];
 }
 
+// Customer Interfaces
+export interface Customer {
+  id: number;
+  customer_code: string;
+  customer_name: string;
+  contact_person?: string;
+  mobile?: string;
+  email?: string;
+  status: string;
+  created_at: string;
+}
+
+export interface CustomerCreateInput {
+  customer_code: string;
+  customer_name: string;
+  contact_person?: string;
+  mobile?: string;
+  email?: string;
+  status?: string;
+}
+
 // Sales Order Interfaces
 export interface SalesOrderItemCreate {
   product_id: number;
   quantity: number;
-  price: number;
+  rate: number;
+  total: number;
 }
 
 export interface SalesOrderItemResponse {
   id: number;
+  sales_order_id: number;
   product_id: number;
   product_name?: string;
   quantity: number;
-  price: number;
+  rate: number;
+  total: number;
 }
 
 export interface SalesOrderCreateInput {
-  customer_name: string;
+  sales_order_number: string;
+  customer_id: number;
+  order_date?: string;
+  expected_delivery_date?: string;
+  remarks?: string;
+  status?: string;
   total_amount: number;
-  status: string; // e.g. "COMPLETED"
   items: SalesOrderItemCreate[];
 }
 
 export interface SalesOrderResponse {
   id: number;
-  customer_name: string;
-  total_amount: number;
+  sales_order_number: string;
+  customer_id: number;
+  order_date?: string;
+  expected_delivery_date?: string;
+  remarks?: string;
   status: string;
+  total_amount: number;
   created_at: string;
+  updated_at: string;
   items: SalesOrderItemResponse[];
+  customer?: Customer;
+}
+
+// Dispatch Interfaces
+export interface DispatchItemCreate {
+  product_id: number;
+  quantity: number;
+}
+
+export interface DispatchItemResponse {
+  id: number;
+  dispatch_id: number;
+  product_id: number;
+  quantity: number;
+}
+
+export interface DispatchCreateInput {
+  dispatch_number: string;
+  sales_order_id: number;
+  remarks?: string;
+  items: DispatchItemCreate[];
+}
+
+export interface DispatchResponse {
+  id: number;
+  dispatch_number: string;
+  sales_order_id: number;
+  dispatch_date: string;
+  remarks?: string;
+  items: DispatchItemResponse[];
+}
+
+// Invoice Interfaces
+export interface InvoiceCreateInput {
+  invoice_number: string;
+  sales_order_id: number;
+  customer_id: number;
+  invoice_date?: string;
+  subtotal: number;
+  tax: number;
+  grand_total: number;
+}
+
+export interface InvoiceResponse {
+  id: number;
+  invoice_number: string;
+  sales_order_id: number;
+  customer_id: number;
+  invoice_date?: string;
+  subtotal: number;
+  tax: number;
+  grand_total: number;
+  created_at: string;
 }
 
 // Notification Interfaces
@@ -484,8 +570,8 @@ export async function downloadPurchaseOrderPdf(id: number): Promise<void> {
 
 // ─── SALES ORDERS ──────────────────────────────────────────
 
-export async function fetchOrders(): Promise<SalesOrderResponse[]> {
-  const res = await fetchWithAuth(`${API_BASE}/orders/`);
+export async function fetchSalesOrders(): Promise<SalesOrderResponse[]> {
+  const res = await fetchWithAuth(`${API_BASE}/sales-orders/`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch sales orders');
@@ -493,8 +579,8 @@ export async function fetchOrders(): Promise<SalesOrderResponse[]> {
   return res.json();
 }
 
-export async function createOrder(order: SalesOrderCreateInput): Promise<SalesOrderResponse> {
-  const res = await fetchWithAuth(`${API_BASE}/orders/`, {
+export async function createSalesOrder(order: SalesOrderCreateInput): Promise<SalesOrderResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/sales-orders/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(order)
@@ -502,6 +588,17 @@ export async function createOrder(order: SalesOrderCreateInput): Promise<SalesOr
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to submit sales order');
+  }
+  return res.json();
+}
+
+export async function approveSalesOrder(orderId: number): Promise<SalesOrderResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/sales-orders/${orderId}/approve`, {
+    method: 'POST'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to approve sales order');
   }
   return res.json();
 }
@@ -777,14 +874,17 @@ export async function updateProduct(id: number, data: Partial<ProductCreateInput
   return res.json();
 }
 
-export async function deleteProduct(id: number): Promise<any> {
-  const res = await fetchWithAuth(`${API_BASE}/products/${id}`, {
+export async function deleteProduct(id: number, force: boolean = false): Promise<any> {
+  const url = `${API_BASE}/products/${id}${force ? '?force=true' : ''}`;
+  const res = await fetchWithAuth(url, {
     method: 'DELETE'
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to delete product');
   }
+  // 204 No Content won't have a JSON body
+  if (res.status === 204) return null;
   return res.json();
 }
 
@@ -832,8 +932,21 @@ export interface InventoryCreateInput {
   quantity_reserved?: number;
 }
 
-export async function fetchInventoryRecords(): Promise<Inventory[]> {
-  const res = await fetchWithAuth(`${API_BASE}/inventory/`);
+export interface InventoryFilters {
+  category_id?: number;
+  warehouse_id?: number;
+  stock_status?: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+  search?: string;
+}
+
+export async function fetchInventoryRecords(filters?: InventoryFilters): Promise<Inventory[]> {
+  const params = new URLSearchParams();
+  if (filters?.category_id) params.set('category_id', filters.category_id.toString());
+  if (filters?.warehouse_id) params.set('warehouse_id', filters.warehouse_id.toString());
+  if (filters?.stock_status) params.set('stock_status', filters.stock_status);
+  if (filters?.search) params.set('search', filters.search);
+  const qs = params.toString();
+  const res = await fetchWithAuth(`${API_BASE}/inventory/${qs ? `?${qs}` : ''}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to fetch inventory records');
@@ -892,7 +1005,7 @@ export async function deletePurchaseOrder(id: number): Promise<any> {
 }
 
 export async function deleteSalesOrder(id: number): Promise<any> {
-  const res = await fetchWithAuth(`${API_BASE}/orders/${id}`, {
+  const res = await fetchWithAuth(`${API_BASE}/sales-orders/${id}`, {
     method: 'DELETE'
   });
   if (!res.ok) {
@@ -1334,5 +1447,102 @@ export async function fetchStockMovements(filters?: { product_id?: number; wareh
     throw new Error(err.detail || 'Failed to fetch stock movements');
   }
   return res.json();
+}
+
+
+// CUSTOMERS
+export async function fetchCustomers(): Promise<Customer[]> {
+  const res = await fetchWithAuth(`${API_BASE}/customers/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch customers');
+  }
+  return res.json();
+}
+
+export async function createCustomer(data: CustomerCreateInput): Promise<Customer> {
+  const res = await fetchWithAuth(`${API_BASE}/customers/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create customer');
+  }
+  return res.json();
+}
+
+export async function deleteCustomer(id: number): Promise<any> {
+  const res = await fetchWithAuth(`${API_BASE}/customers/${id}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete customer');
+  }
+  return res.json();
+}
+
+// DISPATCH
+export async function fetchDispatches(): Promise<DispatchResponse[]> {
+  const res = await fetchWithAuth(`${API_BASE}/dispatch/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch dispatches');
+  }
+  return res.json();
+}
+
+export async function createDispatch(data: DispatchCreateInput): Promise<DispatchResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/dispatch/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create dispatch');
+  }
+  return res.json();
+}
+
+// INVOICES
+export async function fetchInvoices(): Promise<InvoiceResponse[]> {
+  const res = await fetchWithAuth(`${API_BASE}/invoices/`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to fetch invoices');
+  }
+  return res.json();
+}
+
+export async function createInvoice(data: InvoiceCreateInput): Promise<InvoiceResponse> {
+  const res = await fetchWithAuth(`${API_BASE}/invoices/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create invoice');
+  }
+  return res.json();
+}
+
+export async function downloadInvoicePdf(id: number): Promise<void> {
+  const res = await fetchWithAuth(`${API_BASE}/invoices/${id}/pdf`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to download invoice PDF');
+  }
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `invoice_${id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 

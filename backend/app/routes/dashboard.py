@@ -8,7 +8,7 @@ from app.models.product import Product
 from app.models.inventory import Inventory
 from app.models.notification import Notification
 from app.models.purchase_order import PurchaseOrder
-from app.models.order import Order
+from app.models.order import SalesOrder
 from app.models.warehouse import Warehouse
 from app.models.supplier import Supplier
 from app.models.bom import BOM
@@ -49,10 +49,11 @@ def get_dashboard_stats(
     ).count()
 
     purchase_orders = db.query(PurchaseOrder).count()
-    sales_orders = db.query(Order).count()
-    
-    total_warehouses = db.query(Warehouse).count()
+    # Orders statistics
+    total_sales_orders = db.query(SalesOrder).count()
+    completed_sales_orders = db.query(SalesOrder).filter(SalesOrder.status == 'COMPLETED').count()
     total_suppliers = db.query(Supplier).count()
+    total_warehouses = db.query(Warehouse).count()
     
     total_boms = db.query(BOM).count()
     active_production_orders = db.query(ProductionOrder).filter(
@@ -66,9 +67,9 @@ def get_dashboard_stats(
         "total_inventory_quantity": total_inventory_quantity,
         "unread_notifications": unread_notifications,
         "purchase_orders": purchase_orders,
-        "sales_orders": sales_orders,
+        "sales_orders": total_sales_orders,
         "total_warehouses": total_warehouses,
         "total_suppliers": total_suppliers,
         "total_boms": total_boms,
         "active_production_orders": active_production_orders
-    }
+    }

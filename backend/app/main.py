@@ -27,6 +27,9 @@ from app.routes.production_orders import router as production_order_router
 from app.routes.purchase_requests import router as purchase_request_router
 from app.routes.grn import router as grn_router
 from app.routes.stock_movements import router as stock_movements_router
+from app.routes.customers import router as customer_router
+from app.routes.dispatch import router as dispatch_router
+from app.routes.invoices import router as invoice_router
 
 # IMPORT ALL MODELS
 from app.models import (
@@ -326,3 +329,8 @@ app.include_router(production_order_router)
 app.include_router(purchase_request_router)
 app.include_router(grn_router)
 app.include_router(stock_movements_router)
+app.include_router(customer_router)
+app.include_router(dispatch_router)
+app.include_router(invoice_router)
+
+# touch

@@ -205,15 +205,15 @@ export const BOMManager: React.FC = () => {
           alignItems: 'center',
           gap: '0.75rem',
           padding: '0.75rem 1rem',
-          background: node.has_sub_bom ? 'rgba(139, 92, 246, 0.05)' : 'rgba(255,255,255,0.02)',
-          border: node.has_sub_bom ? '1px solid rgba(139, 92, 246, 0.15)' : '1px solid rgba(255,255,255,0.04)',
+          background: node.has_sub_bom ? 'rgba(139, 92, 246, 0.05)' : 'rgba(0,0,0,0.02)',
+          border: node.has_sub_bom ? '1px solid rgba(139, 92, 246, 0.15)' : '1px solid rgba(0,0,0,0.04)',
           borderRadius: '8px',
           fontSize: '0.85rem'
         }}>
           {node.has_sub_bom ? <GitBranch size={16} style={{ color: 'var(--accent-purple)' }} /> : <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />}
           
           <div style={{ flex: 1 }}>
-            <span style={{ fontWeight: 600, color: '#fff' }}>{node.product_name}</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{node.product_name}</span>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginLeft: '0.5rem' }}>SKU: {node.sku}</span>
           </div>
 
@@ -314,8 +314,8 @@ export const BOMManager: React.FC = () => {
 
       {/* Creation/Edit Form Wizard */}
       {showAddForm && (
-        <form onSubmit={handleSaveBOM} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <form onSubmit={handleSaveBOM} className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(0, 0, 0, 0.02)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Cpu size={18} style={{ color: 'var(--accent-purple)' }} />
             {editingId ? 'Edit BOM Recipe Details' : 'Compile New BOM Recipe'}
           </h3>
@@ -355,9 +355,9 @@ export const BOMManager: React.FC = () => {
           </div>
 
           {/* BOM Material Line rows */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+          <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
-              <label style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 700 }}>Raw Materials Manifest</label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 700 }}>Raw Materials Manifest</label>
               <button type="button" onClick={handleAddItemRow} className="scan-action-btn btn-secondary" style={{ width: 'auto', padding: '0.4rem 0.85rem', fontSize: '0.75rem' }}>
                 + Add Ingredient Row
               </button>
@@ -442,13 +442,13 @@ export const BOMManager: React.FC = () => {
           ) : filteredBoms.length === 0 ? (
             <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               <Cpu size={48} style={{ margin: '0 auto 1rem', opacity: 0.15 }} />
-              <h4 style={{ color: '#fff', fontWeight: 600 }}>No BOM Recipes Found</h4>
+              <h4 style={{ color: 'var(--text-primary)', fontWeight: 600 }}>No BOM Recipes Found</h4>
               <p style={{ fontSize: '0.85rem' }}>Add product recipes to enable manufacturing logs.</p>
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
               <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-glass)' }}>
+                <tr style={{ background: 'rgba(0,0,0,0.03)', borderBottom: '1px solid var(--border-glass)' }}>
                   <th style={{ padding: '1rem' }}>BOM Details</th>
                   <th style={{ padding: '1rem' }}>Target Product</th>
                   <th style={{ padding: '1rem', textAlign: 'right' }}>Total Cost Rollup</th>
@@ -466,7 +466,7 @@ export const BOMManager: React.FC = () => {
                       key={bom.id} 
                       className="table-row-hover"
                       style={{ 
-                        borderBottom: '1px solid rgba(255,255,255,0.04)', 
+                        borderBottom: '1px solid rgba(0,0,0,0.04)', 
                         transition: 'var(--transition-smooth)',
                         background: selectedBom?.id === bom.id ? 'rgba(139, 92, 246, 0.04)' : 'transparent',
                         cursor: 'pointer'
@@ -474,16 +474,16 @@ export const BOMManager: React.FC = () => {
                       onClick={() => handleViewTree(bom)}
                     >
                       <td style={{ padding: '1rem' }}>
-                        <div style={{ fontWeight: 700, color: '#fff' }}>{bom.bom_number}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{bom.bom_number}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Ver: {bom.version}</div>
                       </td>
 
                       <td style={{ padding: '1rem' }}>
-                        <div style={{ fontWeight: 600, color: '#fff' }}>{targetProd ? targetProd.product_name : `Product ID: ${bom.product_id}`}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{targetProd ? targetProd.product_name : `Product ID: ${bom.product_id}`}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{targetProd?.sku}</div>
                       </td>
 
-                      <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 700, color: '#fff' }}>
+                      <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>
                         ₹{bom.total_cost ? Number(bom.total_cost).toFixed(2) : '0.00'}
                       </td>
 
@@ -554,7 +554,7 @@ export const BOMManager: React.FC = () => {
 
         {/* Right Column: Visual BOM Cost Tree Rollup */}
         <div className="glass-panel" style={{ padding: '1.25rem', minHeight: '350px' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <GitBranch size={16} style={{ color: 'var(--accent-purple)' }} />
             BOM Cost Tree Rollup
           </h3>
@@ -573,7 +573,7 @@ export const BOMManager: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {/* Card Summary Header */}
               <div style={{ background: 'rgba(0,0,0,0.15)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
-                <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem', marginBottom: '0.25rem' }}>{selectedBom.bom_number}</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem', marginBottom: '0.25rem' }}>{selectedBom.bom_number}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Target: {products.find(p => p.id === selectedBom.product_id)?.product_name}</div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
@@ -587,8 +587,8 @@ export const BOMManager: React.FC = () => {
                   </div>
                 </div>
                 
-                <div style={{ borderTop: '1px dashed rgba(255,255,255,0.08)', marginTop: '0.75rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600 }}>Total Compiled Cost</span>
+                <div style={{ borderTop: '1px dashed rgba(0,0,0,0.08)', marginTop: '0.75rem', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600 }}>Total Compiled Cost</span>
                   <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-neon)' }}>₹{selectedBom.total_cost.toFixed(2)}</span>
                 </div>
               </div>

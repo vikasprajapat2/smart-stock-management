@@ -230,7 +230,7 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
                   className="camera-select"
                   value={selectedCameraId}
                   onChange={(e) => setSelectedCameraId(e.target.value)}
-                  style={{ maxWidth: '100px', background: 'transparent', border: 'none', color: '#fff' }}
+                  style={{ maxWidth: '100px', background: 'transparent', border: 'none', color: 'var(--text-primary)' }}
                 >
                   {cameras.map((device) => (
                     <option key={device.id} value={device.id} style={{ color: '#000' }}>
@@ -295,7 +295,7 @@ export const ScannerActive: React.FC<ScannerActiveProps> = ({
             padding: '2rem'
           }}>
             <CameraOff size={48} style={{ margin: '0 auto 1.5rem', opacity: 0.5 }} />
-            <p style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '0.5rem', color: '#fff' }}>
+            <p style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
               Camera Scanner is Off
             </p>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '300px', margin: '0 auto 1.5rem' }}>

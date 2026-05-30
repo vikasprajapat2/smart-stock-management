@@ -107,7 +107,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
     <div className="glass-panel" style={{ padding: '1.5rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div className="history-header">
-        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Clock size={20} style={{ color: 'var(--accent-purple)' }} />
           Scan History
         </h3>
@@ -178,8 +178,8 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({
                 key={filter.id}
                 onClick={() => setActiveFilter(filter.id)}
                 style={{
-                  background: activeFilter === filter.id ? 'var(--accent-purple)' : 'rgba(255,255,255,0.03)',
-                  color: activeFilter === filter.id ? '#fff' : 'var(--text-secondary)',
+                  background: activeFilter === filter.id ? 'var(--accent-purple)' : 'rgba(0,0,0,0.03)',
+                  color: activeFilter === filter.id ? 'var(--text-primary)' : 'var(--text-secondary)',
                   border: '1px solid',
                   borderColor: activeFilter === filter.id ? 'var(--accent-purple)' : 'var(--border-glass)',
                   padding: '0.35rem 0.75rem',
