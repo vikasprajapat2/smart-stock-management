@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Search, ShoppingBag, Loader, AlertTriangle, 
-  Check, RefreshCw, ShieldAlert, QrCode, X, Download, FileUp, FileDown, FileSpreadsheet, Edit2, Trash2, Filter
+  Check, RefreshCw, ShieldAlert, QrCode, X, Download, FileUp, FileDown, FileSpreadsheet, Edit2, Trash2, Filter, Printer
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createPortal } from 'react-dom';
@@ -26,6 +26,7 @@ export const InventoryManager: React.FC = () => {
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [formSuccess, setFormSuccess] = useState<string>('');
   const [qrPopupProduct, setQrPopupProduct] = useState<Product | null>(null);
+  const [printQuantity, setPrintQuantity] = useState<number>(16);
 
   // Add Product Form states
   const [name, setName] = useState<string>('');
@@ -1044,36 +1045,72 @@ export const InventoryManager: React.FC = () => {
             </div>
 
             {qrPopupProduct.barcode && (
-              <button
-                className="scan-action-btn btn-primary"
-                style={{ width: '100%', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                onClick={() => {
-                  const box = document.getElementById('qr-code-render-box');
-                  const svg = box ? box.querySelector('svg') : null;
-                  if (!svg) return;
-                  const svgData = new XMLSerializer().serializeToString(svg);
-                  const canvas = document.createElement('canvas');
-                  const ctx = canvas.getContext('2d');
-                  const img = new Image();
-                  img.onload = () => {
-                    canvas.width = img.width + 40;
-                    canvas.height = img.height + 40;
-                    if (ctx) {
-                      ctx.fillStyle = 'white';
-                      ctx.fillRect(0, 0, canvas.width, canvas.height);
-                      ctx.drawImage(img, 20, 20);
-                      const a = document.createElement('a');
-                      a.download = `QR_${qrPopupProduct.sku}.png`;
-                      a.href = canvas.toDataURL('image/png');
-                      a.click();
-                    }
-                  };
-                  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
-                }}
-              >
-                <Download size={16} />
-                Download QR Image
-              </button>
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    className="scan-action-btn btn-primary"
+                    style={{ flex: 1, padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: '#3b82f6', border: 'none' }}
+                    onClick={() => {
+                      const box = document.getElementById('qr-code-render-box');
+                      const svg = box ? box.querySelector('svg') : null;
+                      if (!svg) return;
+                      const svgData = new XMLSerializer().serializeToString(svg);
+                      const canvas = document.createElement('canvas');
+                      const ctx = canvas.getContext('2d');
+                      const img = new Image();
+                      img.onload = () => {
+                        canvas.width = img.width + 40;
+                        canvas.height = img.height + 40;
+                        if (ctx) {
+                          ctx.fillStyle = 'white';
+                          ctx.fillRect(0, 0, canvas.width, canvas.height);
+                          ctx.drawImage(img, 20, 20);
+                          const a = document.createElement('a');
+                          a.download = `QR_${qrPopupProduct.sku}.png`;
+                          a.href = canvas.toDataURL('image/png');
+                          a.click();
+                        }
+                      };
+                      img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+                    }}
+                  >
+                    <Download size={16} />
+                    Download QR Code
+                  </button>
+                </div>
+                
+                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Printer size={16} /> Batch Print Labels (ST-16)
+                  </h4>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input 
+                      type="number"
+                      min="1"
+                      max="160"
+                      value={printQuantity}
+                      onChange={(e) => setPrintQuantity(parseInt(e.target.value) || 16)}
+                      style={{ width: '80px', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                      title="Number of labels to print"
+                    />
+                    <button
+                      onClick={() => {
+                        window.open(`http://localhost:8000/api/products/${qrPopupProduct.id}/print-barcode?quantity=${printQuantity}`, '_blank');
+                      }}
+                      style={{ 
+                        flex: 1, padding: '0.55rem', background: 'var(--accent-neon)', color: '#fff', 
+                        border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontSize: '0.85rem'
+                      }}
+                    >
+                      <Download size={14} /> Download A4 PDF
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem', textAlign: 'left' }}>
+                    Downloads a PDF formatted perfectly for ST-16 A4 label sheets (2x8 grid). Each label will include the barcode, product name, and SKU.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         </div>,

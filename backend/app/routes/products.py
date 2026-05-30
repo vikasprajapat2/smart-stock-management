@@ -14,6 +14,10 @@ from app.utils.role_checker import (
     require_staff
 )
 import pandas as pd
+from fpdf import FPDF
+import barcode
+from barcode.writer import ImageWriter
+import io
 from app.database import get_db
 from app.models.product import Product
 from app.models.category import Category
@@ -438,4 +442,82 @@ def scan_product_barcode(scan_in: ProductScanRequest, db: Session = Depends(get_
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+@router.get("/{id}/print-barcode")
+def print_product_labels(id: int, quantity: int = 16, db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.id == id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+        
+    b_code = product.barcode
+    if not b_code:
+        raise HTTPException(status_code=400, detail="Product has no barcode")
+
+    # ST-16 Metrics
+    LBL_WIDTH = 99.1
+    LBL_HEIGHT = 33.9
+    MARGIN_TOP = 12.9
+    MARGIN_LEFT = 4.65
+    GAP_X = 2.5
+    GAP_Y = 0
+
+    pdf = FPDF(format='A4')
+    pdf.set_auto_page_break(auto=False)
+    
+    # Generate Barcode Image in memory
+    rv = io.BytesIO()
+    Code128 = barcode.get_barcode_class('code128')
+    options = {
+        'write_text': False,
+        'module_width': 0.3,
+        'module_height': 8.0,
+        'quiet_zone': 2.0,
+        'font_size': 0
+    }
+    bc = Code128(b_code, writer=ImageWriter())
+    bc.write(rv, options=options)
+    rv.seek(0)
+    barcode_img = rv.getvalue()
+    
+    labels_per_page = 16
+    for i in range(quantity):
+        idx = i % labels_per_page
+        if idx == 0:
+            pdf.add_page()
+            
+        col = idx % 2
+        row = idx // 2
+        
+        x = MARGIN_LEFT + col * (LBL_WIDTH + GAP_X)
+        y = MARGIN_TOP + row * (LBL_HEIGHT + GAP_Y)
+        
+        # Product Name
+        pdf.set_xy(x + 2, y + 2)
+        pdf.set_font('Helvetica', 'B', 10)
+        pdf.cell(LBL_WIDTH - 4, 5, text=product.product_name[:30], align="C")
+        
+        # SKU
+        pdf.set_xy(x + 2, y + 7)
+        pdf.set_font('Helvetica', '', 9)
+        pdf.cell(LBL_WIDTH - 4, 4, text=f"SKU: {product.sku}", align="C")
+        
+        # Barcode
+        bc_width = 70
+        bc_height = 12
+        bc_x = x + (LBL_WIDTH - bc_width) / 2
+        bc_y = y + 13
+        pdf.image(io.BytesIO(barcode_img), x=bc_x, y=bc_y, w=bc_width, h=bc_height)
+        
+        # Barcode Text below image
+        pdf.set_xy(x + 2, bc_y + bc_height + 1)
+        pdf.set_font('Helvetica', 'B', 10)
+        pdf.cell(LBL_WIDTH - 4, 4, text=b_code, align="C")
+        
+    pdf_bytes = bytes(pdf.output())
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=labels_{product.sku}.pdf"}
+    )
+
 
